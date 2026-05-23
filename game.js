@@ -5,11 +5,7 @@ let player;
 let obstacles = [];
 let trackPieces = [];
 let coins = [];
-
-// HIGH-PERFORMANCE INSTANCING ENGINE FOR TREES
-let treeInstanceMesh;
-const MAX_TREES = 160; // Dense pool capacity
-let treePositions = []; // Local tracking array for positions: [{x, y, z, speedModifier}]
+let trees = []; // Restored detailed tracking registry
 
 // Game Tuning Configurations & Metrics
 let speed = 0.6;
@@ -45,10 +41,9 @@ const coinsUi = document.getElementById('coins-ui');
 // Pre-cached Branded Obstacle Material Tiers
 let obstacleMaterials = {};
 
-// Reusable math allocation shells to stop garbage collection lag spikes
+// Reusable math allocation shells to completely avoid garbage collection stuttering
 const _playerBox = new THREE.Box3();
 const _obstacleBox = new THREE.Box3();
-const _dummyMatrix = new THREE.Object3D();
 
 /**
  * Initializes the full WebGL pipeline and environmental configurations.
@@ -62,7 +57,7 @@ function init() {
     camera.position.set(0, 7, 14); 
 
     renderer = new THREE.WebGLRenderer({ 
-        antialias: false, // Turned off MSAA for massive mobile/low-end GPU performance lift
+        antialias: false, // Performance booster for steady framerates
         powerPreference: "high-performance",
         precision: "mediump"
     });
@@ -90,60 +85,25 @@ function init() {
         createTrackSection(i * -40);
     }
 
-    // Initialize Batch-Instanced Deep Forest System
-    buildInstancedForest();
+    // MULTI-LAYERED DEEP FOREST GENERATION (Restored Original Visual Layout)
+    // Optimized matrix positioning to avoid complex run-time object transformations
+    for(let z = 0; z > -240; z -= 8) {
+        spawnTree(-11 - Math.random() * 3, z);  
+        spawnTree(-15 - Math.random() * 4, z + 3);  
+        spawnTree(-22 - Math.random() * 6, z - 2);  
+        spawnTree(-30 - Math.random() * 8, z + 1);  
+
+        spawnTree(11 + Math.random() * 3, z);   
+        spawnTree(15 + Math.random() * 4, z + 3);   
+        spawnTree(22 + Math.random() * 6, z - 2);   
+        spawnTree(30 + Math.random() * 8, z + 1);   
+    }
 
     setupMenuInteractions();
     
     window.innerWidth < 768 ? renderer.setPixelRatio(1) : renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('keydown', handleGlobalKeydown);
-}
-
-/**
- * Merges entire forest layout parameters into a single GPU Instanced Drawing Batch
- */
-function buildInstancedForest() {
-    // Generate a single optimized low-poly tree base geometry structure
-    const baseTreeGeometry = new THREE.CylinderGeometry(0, 2.5, 7.0, 4);
-    baseTreeGeometry.translate(0, 3.5, 0); // Offset origin to bottom plate
-    const singleForestMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff44, roughness: 0.8, metalness: 0.1 });
-
-    treeInstanceMesh = new THREE.InstancedMesh(baseTreeGeometry, singleForestMaterial, MAX_TREES);
-    treeInstanceMesh.name = "instancedForest";
-    
-    let count = 0;
-    // Populate layout data loops
-    for(let z = 0; z > -240; z -= 6) {
-        if(count >= MAX_TREES - 4) break;
-
-        // Left rows
-        treePositions.push({ x: -11 - Math.random() * 4, z: z, side: 'left' });
-        treePositions.push({ x: -18 - Math.random() * 12, z: z + 2, side: 'left' });
-
-        // Right rows
-        treePositions.push({ x: 11 + Math.random() * 4, z: z, side: 'right' });
-        treePositions.push({ x: 18 + Math.random() * 12, z: z + 2, side: 'right' });
-        
-        count += 4;
-    }
-
-    // Compile and push initial batch matrices to GPU memory slots
-    updateInstancedMeshTransforms();
-    scene.add(treeInstanceMesh);
-}
-
-/**
- * Loops through local coordinates to flash the updated single-batch GPU instancing buffer
- */
-function updateInstancedMeshTransforms() {
-    for (let i = 0; i < treePositions.length; i++) {
-        const data = treePositions[i];
-        _dummyMatrix.position.set(data.x, 0, data.z);
-        _dummyMatrix.updateMatrix();
-        treeInstanceMesh.setMatrixAt(i, _dummyMatrix.matrix);
-    }
-    treeInstanceMesh.instanceMatrix.needsUpdate = true;
 }
 
 function generateBrandedTextures() {
@@ -156,7 +116,7 @@ function generateBrandedTextures() {
 
     configurations.forEach(cfg => {
         const canvas = document.createElement('canvas');
-        canvas.width = 128; canvas.height = 128; // Reduced resolution from 256 for lower texture memory overhead
+        canvas.width = 128; canvas.height = 128; 
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = cfg.bg; ctx.fillRect(0, 0, 128, 128);
         ctx.strokeStyle = cfg.text; ctx.lineWidth = 6; ctx.strokeRect(3, 3, 122, 122);
@@ -194,6 +154,64 @@ function createTrackSection(zOffset) {
     trackPieces.push(group);
 }
 
+/**
+ * Restored Detailed Structural Tree Generation Pipeline with Optimization Flags
+ */
+function spawnTree(xPos, zPos) {
+    const treeGroup = new THREE.Group();
+    
+    const trunkHeight = 6.0 + Math.random() * 5.0;
+    const trunkRadius = 0.45 + Math.random() * 0.35;
+
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 5); // Trimmed sides slightly for performance
+    
+    let trunkColor = 0x422d1e;
+    if (currentTier === 1) trunkColor = 0x1f1111;
+    if (currentTier === 2) trunkColor = 0x3d0066;
+    if (currentTier === 3) trunkColor = 0xdddddd;
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.9 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = trunkHeight / 2;
+    treeGroup.add(trunk);
+
+    const branchesGroup = new THREE.Group();
+    branchesGroup.name = "branches";
+    const branchCount = 2 + Math.floor(Math.random() * 2);
+    for(let i=0; i<branchCount; i++) {
+        const bGeo = new THREE.BoxGeometry(2.5, 0.22, 0.22);
+        const bMesh = new THREE.Mesh(bGeo, trunkMat);
+        bMesh.position.set(Math.random() > 0.5 ? 1.0 : -1.0, (trunkHeight * 0.35) + (i * 1.5), 0);
+        bMesh.rotation.z = Math.random() > 0.5 ? 0.30 : -0.30;
+        branchesGroup.add(bMesh);
+    }
+    treeGroup.add(branchesGroup);
+
+    const leavesGroup = new THREE.Group();
+    leavesGroup.name = "foliage";
+    
+    if (currentTier === 0) {
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
+        for(let j=0; j<3; j++) {
+            const size = 3.8 - (j * 0.9);
+            const lGeo = new THREE.ConeGeometry(size, 4.2, 4); // Low-poly profile structure preserves memory bandwidth
+            const lMesh = new THREE.Mesh(lGeo, leafMat);
+            lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+            leavesGroup.add(lMesh);
+        }
+    }
+    treeGroup.add(leavesGroup);
+
+    treeGroup.position.set(xPos, 0, zPos);
+    
+    // Disable auto-matrix computation to bypass continuous CPU-to-GPU overhead spikes
+    treeGroup.matrixAutoUpdate = false;
+    treeGroup.updateMatrix();
+
+    scene.add(treeGroup);
+    trees.push(treeGroup);
+}
+
 function assembleSelectedDrone() {
     if (player) scene.remove(player);
     const spec = droneSpecs[activeDroneType];
@@ -219,7 +237,8 @@ function spawnObstacle(zPos) {
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
     const activeMat = obstacleMaterials['tier' + currentTier];
     
-    const types = ["STATIC", "SPINNING", "JUMPING", "MOVING"];
+    // Restricted obstacle roster: Left-Right MOVING obstacles have been removed
+    const types = ["STATIC", "SPINNING", "JUMPING"];
     const selectedType = types[Math.floor(Math.random() * types.length)];
     
     let obstacleMesh;
@@ -232,10 +251,6 @@ function spawnObstacle(zPos) {
         const obsGeo = new THREE.BoxGeometry(3.2, 3.2, 3.2);
         obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
         obstacleMesh.position.set(chosenLane, 1.6, zPos);
-    } else if (selectedType === "MOVING") {
-        const obsGeo = new THREE.BoxGeometry(3.8, 2.6, 2.0);
-        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
-        obstacleMesh.position.set(chosenLane, 1.3, zPos);
     } else {
         const obsGeo = new THREE.BoxGeometry(4.2, 3.6, 2.0);
         obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
@@ -262,7 +277,7 @@ function spawnObstacle(zPos) {
 }
 
 function spawnCoinSeries(laneX, startZ) {
-    const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.20, 12); // Dropped faces to 12 for execution speed
+    const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.20, 12); 
     coinGeo.rotateX(Math.PI / 2);
     
     const coinMat = new THREE.MeshStandardMaterial({ 
@@ -340,10 +355,10 @@ function shiftingThemeStateMatrix(tierIndex) {
     currentTier = tierIndex;
     
     const tiers = [
-        { sky: 0xa3e5ff, fogDen: 0.008, sun: 0xffffff, amb: 0x7cdaff, track: 0x004411, gLine: 0x00ff66, gSub: 0x00aa44, rail: 0xff0066 }, 
-        { sky: 0x1a0505, fogDen: 0.015, sun: 0xff2200, amb: 0x3a0000, track: 0x110505, gLine: 0xff3300, gSub: 0x551100, rail: 0xaa0000 }, 
-        { sky: 0x0c0114, fogDen: 0.018, sun: 0x9900ff, amb: 0x110022, track: 0x05010a, gLine: 0x00ffaa, gSub: 0x004422, rail: 0x6600cc }, 
-        { sky: 0x000000, fogDen: 0.025, sun: 0xffaa00, amb: 0x0a0a0a, track: 0x020202, gLine: 0xff0044, gSub: 0x330000, rail: 0xffaa00 }  
+        { sky: 0xa3e5ff, fogDen: 0.008, sun: 0xffffff, amb: 0x7cdaff, track: 0x004411, gLine: 0x00ff66, gSub: 0x00aa44, rail: 0xff0066, wood: 0x5a3d28, leafColor: 0x00ff44 }, 
+        { sky: 0x1a0505, fogDen: 0.015, sun: 0xff2200, amb: 0x3a0000, track: 0x110505, gLine: 0xff3300, gSub: 0x551100, rail: 0xaa0000, wood: 0x1f1111 }, 
+        { sky: 0x0c0114, fogDen: 0.018, sun: 0x9900ff, amb: 0x110022, track: 0x05010a, gLine: 0x00ffaa, gSub: 0x004422, rail: 0x6600cc, wood: 0x3d0066 }, 
+        { sky: 0x000000, fogDen: 0.025, sun: 0xffaa00, amb: 0x0a0a0a, track: 0x020202, gLine: 0xff0044, gSub: 0x330000, rail: 0xffaa00, wood: 0xdddddd }  
     ];
 
     const currentBlueprint = tiers[tierIndex];
@@ -368,13 +383,30 @@ function shiftingThemeStateMatrix(tierIndex) {
         track.children[2].material.color.setHex(currentBlueprint.rail);
     });
 
-    // Update the singular instanced mesh tone to match environments instantly
-    if (treeInstanceMesh) {
-        if(tierIndex === 0) treeInstanceMesh.material.color.setHex(0x00ff44);
-        else if(tierIndex === 1) treeInstanceMesh.material.color.setHex(0x3a0000);
-        else if(tierIndex === 2) treeInstanceMesh.material.color.setHex(0x3d0066);
-        else treeInstanceMesh.material.color.setHex(0x444444);
-    }
+    trees.forEach(treeGroup => {
+        treeGroup.children[0].material.color.setHex(currentBlueprint.wood);
+        const branchGroup = treeGroup.getObjectByName("branches");
+        if(branchGroup) {
+            branchGroup.children.forEach(b => b.material.color.setHex(currentBlueprint.wood));
+        }
+
+        const leavesGroup = treeGroup.getObjectByName("foliage");
+        if (leavesGroup) {
+            leavesGroup.clear(); 
+            if (tierIndex === 0) {
+                const trunkHeight = treeGroup.children[0].geometry.parameters.height;
+                const leafMat = new THREE.MeshStandardMaterial({ color: currentBlueprint.leafColor, emissive: 0x003311, roughness: 0.6 });
+                for(let j=0; j<3; j++) {
+                    const size = 3.8 - (j * 0.9);
+                    const lGeo = new THREE.ConeGeometry(size, 4.2, 4);
+                    const lMesh = new THREE.Mesh(lGeo, leafMat);
+                    lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+                    leavesGroup.add(lMesh);
+                }
+            }
+        }
+        treeGroup.updateMatrix(); // Refresh local frame representation maps manually
+    });
 
     playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
 }
@@ -433,18 +465,19 @@ function update() {
         if (track.position.z > 40) track.position.z = -200;
     });
 
-    // HIGH PERFORMANCE STATIC INSTANCED RUNWAY TREE RECYCLER 
-    for (let i = 0; i < treePositions.length; i++) {
-        const data = treePositions[i];
-        data.z += speed;
-        if (data.z > 20) {
-            data.z = -220;
-            data.x = data.side === 'left' ? (-11 - Math.random() * 24) : (11 + Math.random() * 24);
+    // Highly Optimized Matrix-Recycler for detailed trees
+    trees.forEach(treeGroup => {
+        treeGroup.position.z += speed;
+        if (treeGroup.position.z > 20) {
+            const oldX = treeGroup.position.x;
+            const isLeft = oldX < 0;
+            let newX = isLeft ? (-11 - Math.random() * 24) : (11 + Math.random() * 24);
+            treeGroup.position.set(newX, 0, -220);
         }
-    }
-    updateInstancedMeshTransforms();
+        treeGroup.updateMatrix(); 
+    });
 
-    // Inline distance checking to minimize active array manipulation overheads
+    // Optimized inline reverse collection sweep for active item configurations
     for (let index = coins.length - 1; index >= 0; index--) {
         const coin = coins[index];
         coin.position.z += speed; coin.rotation.y += 0.04;
@@ -471,11 +504,9 @@ function update() {
             obs.rotation.y += 0.035;
         } else if (behavior === "JUMPING") {
             obs.position.y = obs.userData.baseY + Math.abs(Math.sin(elapsedTime * 4.5 + offset)) * 4.0;
-        } else if (behavior === "MOVING") {
-            obs.position.x = Math.sin(elapsedTime * 3.0 + offset) * 6.0;
         }
 
-        // Uses pre-allocated structures to prevent frame drops
+        // Bounding checks utilize static pre-allocated wrappers to eliminate dynamic frame-drops
         _obstacleBox.setFromObject(obs);
 
         if (_playerBox.intersectsBox(_obstacleBox)) {
