@@ -5,7 +5,7 @@ let player;
 let obstacles = [];
 let trackPieces = [];
 let coins = [];
-let trees = []; // Active environment tree tracking arrays
+let trees = []; 
 
 // Game Tuning Configurations & Metrics
 let speed = 0.6;
@@ -78,19 +78,16 @@ function init() {
     }
 
     // MULTI-LAYERED DEEP FOREST GENERATION
-    // Spawns multiple horizontal ranks of trees outwards to create a thick forest wilderness
     for(let z = 0; z > -240; z -= 8) {
-        // --- Left Side Forest Rows ---
-        spawnTree(-11 - Math.random() * 3, z);  // Row 1 (Track Edge)
-        spawnTree(-15 - Math.random() * 4, z + 3);  // Row 2 (Mid-depth)
-        spawnTree(-22 - Math.random() * 6, z - 2);  // Row 3 (Deep Forest)
-        spawnTree(-30 - Math.random() * 8, z + 1);  // Row 4 (Horizon Forest)
+        spawnTree(-11 - Math.random() * 3, z);  
+        spawnTree(-15 - Math.random() * 4, z + 3);  
+        spawnTree(-22 - Math.random() * 6, z - 2);  
+        spawnTree(-30 - Math.random() * 8, z + 1);  
 
-        // --- Right Side Forest Rows ---
-        spawnTree(11 + Math.random() * 3, z);   // Row 1 (Track Edge)
-        spawnTree(15 + Math.random() * 4, z + 3);   // Row 2 (Mid-depth)
-        spawnTree(22 + Math.random() * 6, z - 2);   // Row 3 (Deep Forest)
-        spawnTree(30 + Math.random() * 8, z + 1);   // Row 4 (Horizon Forest)
+        spawnTree(11 + Math.random() * 3, z);   
+        spawnTree(15 + Math.random() * 4, z + 3);   
+        spawnTree(22 + Math.random() * 6, z - 2);   
+        spawnTree(30 + Math.random() * 8, z + 1);   
     }
 
     setupMenuInteractions();
@@ -152,14 +149,11 @@ function createTrackSection(zOffset) {
 
 function spawnTree(xPos, zPos) {
     const treeGroup = new THREE.Group();
-    
-    // Scale vectors up drastically to simulate an intense forest environment
     const trunkHeight = 6.0 + Math.random() * 5.0;
     const trunkRadius = 0.45 + Math.random() * 0.35;
 
     const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 6);
     
-    // Switch colors dynamically based on current tier profile context
     let trunkColor = 0x422d1e;
     if (currentTier === 1) trunkColor = 0x1f1111;
     if (currentTier === 2) trunkColor = 0x3d0066;
@@ -223,21 +217,57 @@ function assembleSelectedDrone() {
     const underglow = new THREE.PointLight(spec.color, 3, 8); underglow.position.set(0, -0.5, 0); player.add(underglow);
 }
 
+/**
+ * Procedural Dynamic Obstacle Factory Engine
+ */
 function spawnObstacle(zPos) {
     const lanes = [-5, 0, 5]; 
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
-    const obsGeo = new THREE.BoxGeometry(4.5, 4, 2);
-    
     const activeMat = obstacleMaterials['tier' + currentTier];
-    const obstacle = new THREE.Mesh(obsGeo, activeMat);
-    obstacle.position.set(chosenLane, 2, zPos);
     
-    scene.add(obstacle);
-    obstacles.push(obstacle);
+    // Choose behavior archetype: "STATIC", "SPINNING", "JUMPING", "MOVING"
+    const types = ["STATIC", "SPINNING", "JUMPING", "MOVING"];
+    const selectedType = types[Math.floor(Math.random() * types.length)];
+    
+    let obstacleMesh;
+    
+    if (selectedType === "SPINNING") {
+        // Creates a long hazard gate stretching across lanes that sweeps around
+        const obsGeo = new THREE.BoxGeometry(9.0, 1.5, 1.5);
+        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
+        obstacleMesh.position.set(0, 1.5, zPos); // Centralized track point to optimize rotational clearance
+    } else if (selectedType === "JUMPING") {
+        // High vertical block geometry designed for jumping physics animations
+        const obsGeo = new THREE.BoxGeometry(3.5, 3.5, 3.5);
+        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
+        obstacleMesh.position.set(chosenLane, 1.75, zPos);
+    } else if (selectedType === "MOVING") {
+        // Compact modular payload designed to sweep laterally between shoulders
+        const obsGeo = new THREE.BoxGeometry(4.0, 3.0, 2.0);
+        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
+        obstacleMesh.position.set(chosenLane, 1.5, zPos);
+    } else {
+        // Standard Baseline Barricade Block Layout
+        const obsGeo = new THREE.BoxGeometry(4.5, 4, 2);
+        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
+        obstacleMesh.position.set(chosenLane, 2, zPos);
+    }
 
+    // Embed contextual tracking properties safely within the Object3D definition wrapper
+    obstacleMesh.userData = {
+        type: selectedType,
+        baseX: obstacleMesh.position.x,
+        baseY: obstacleMesh.position.y,
+        timeOffset: Math.random() * Math.PI * 2 // Prevents uniform synced movements
+    };
+    
+    scene.add(obstacleMesh);
+    obstacles.push(obstacleMesh);
+
+    // Coin Streak Generation Logic Matrix
     if (Math.random() > 0.2) {
         let coinLane = lanes[Math.floor(Math.random() * lanes.length)];
-        while(coinLane === chosenLane) { 
+        while(selectedType !== "SPINNING" && coinLane === chosenLane) { 
             coinLane = lanes[Math.floor(Math.random() * lanes.length)];
         }
         spawnCoinSeries(coinLane, zPos + 10);
@@ -404,6 +434,7 @@ function update() {
     modulateEngineSound();
     if (gameState !== "PLAYING") return;
     const spec = droneSpecs[activeDroneType];
+    const elapsedTime = performance.now() * 0.001; // Global time anchor context
 
     if ((keys['a'] || keys['arrowleft']) && player.position.x > -6.5) player.position.x -= spec.lateral;
     if ((keys['d'] || keys['arrowright']) && player.position.x < 6.5) player.position.x += spec.lateral;
@@ -431,21 +462,12 @@ function update() {
         if (track.position.z > 40) track.position.z = -200;
     });
 
-    // Infinite Forest Recycler Loop Execution
     trees.forEach(treeGroup => {
         treeGroup.position.z += speed;
         if (treeGroup.position.z > 20) {
-            // Re-randomize the track lateral offset coordinates slightly to preserve procedural variation
             const oldX = treeGroup.position.x;
             const isLeft = oldX < 0;
-            let newX;
-            
-            if (isLeft) {
-                newX = -11 - Math.random() * 24; 
-            } else {
-                newX = 11 + Math.random() * 24;
-            }
-            
+            let newX = isLeft ? (-11 - Math.random() * 24) : (11 + Math.random() * 24);
             treeGroup.position.set(newX, 0, -220);
         }
     });
@@ -460,8 +482,25 @@ function update() {
         if (coin.position.z > 20) { scene.remove(coin); coins.splice(index, 1); }
     });
 
+    // Handle Obstacle Animation Engine Loops & Collisions
     obstacles.forEach((obs, index) => {
         obs.position.z += speed;
+        
+        // Execute dynamic behavior scripts based on obstacle type
+        const behavior = obs.userData.type;
+        const offset = obs.userData.timeOffset;
+        
+        if (behavior === "SPINNING") {
+            obs.rotation.y += 0.035; // Rotates the sweeping gate across lanes
+        } else if (behavior === "JUMPING") {
+            // High bouncing wave animation profile logic mapping
+            obs.position.y = obs.userData.baseY + Math.abs(Math.sin(elapsedTime * 4.5 + offset)) * 4.0;
+        } else if (behavior === "MOVING") {
+            // Horizontal sliding back and forth across track lanes boundaries
+            obs.position.x = Math.sin(elapsedTime * 3.0 + offset) * 6.0;
+        }
+
+        // Generate precise automated bounding maps to reflect continuous shape transforms
         const pBox = new THREE.Box3().setFromObject(player);
         const oBox = new THREE.Box3().setFromObject(obs);
 
