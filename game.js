@@ -12,7 +12,7 @@ let speed = 0.6;
 let maxSpeed = 2.4;
 let distance = 0;
 let coinsCount = 0;
-let isHellTheme = false;
+let currentTier = 0; // 0 = Base, 1 = 200km, 2 = 250km, 3 = 300km
 const keys = {};
 
 // Active Selected Drone Configuration Mapping
@@ -38,8 +38,8 @@ const speedUi = document.getElementById('speed-ui');
 const distanceUi = document.getElementById('distance-ui');
 const coinsUi = document.getElementById('coins-ui');
 
-// Pre-cached Obstacle Textures
-let regularObstacleMaterial, hellObstacleMaterial;
+// Pre-cached Branded Obstacle Material Tiers
+let obstacleMaterials = {};
 
 /**
  * Initializes the full WebGL pipeline and environmental configurations.
@@ -69,7 +69,7 @@ function init() {
     ambientLight.name = "ambientlight";
     scene.add(ambientLight);
 
-    // Generate Custom "KM" branded Material Textures
+    // Generate Branded Textures for each tier phase
     generateBrandedTextures();
 
     // Instance structural track runways
@@ -77,10 +77,15 @@ function init() {
         createTrackSection(i * -40);
     }
 
-    // Generate initial environment side trees
-    for(let z = 0; z > -240; z -= 15) {
-        spawnTree(-11, z); // Left bank line
-        spawnTree(11, z);  // Right bank line
+    // Generate massive initial forest layer on both banks
+    // Lower spacing intervals creates a denser, heavier tree line effect
+    for(let z = 0; z > -240; z -= 10) {
+        // Left side dense layers
+        spawnTree(-12 - Math.random() * 3, z);
+        spawnTree(-16 - Math.random() * 4, z);
+        // Right side dense layers
+        spawnTree(12 + Math.random() * 3, z);
+        spawnTree(16 + Math.random() * 4, z);
     }
 
     setupMenuInteractions();
@@ -90,35 +95,30 @@ function init() {
 }
 
 /**
- * Generates custom dynamic canvas textures to wrap "KM" around the walls
+ * Generates custom canvas textures for each dynamic stage variation
  */
 function generateBrandedTextures() {
-    const canvasReg = document.createElement('canvas');
-    canvasReg.width = 256; canvasReg.height = 256;
-    const ctxReg = canvasReg.getContext('2d');
-    ctxReg.fillStyle = '#111122'; ctxReg.fillRect(0, 0, 256, 256);
-    ctxReg.strokeStyle = '#00f3ff'; ctxReg.lineWidth = 8; ctxReg.strokeRect(4, 4, 248, 248);
-    ctxReg.fillStyle = '#00f3ff'; ctxReg.font = 'bold 110px monospace';
-    ctxReg.textAlign = 'center'; ctxReg.textBaseline = 'middle';
-    ctxReg.fillText('KM', 128, 128);
-    
-    const texReg = new THREE.CanvasTexture(canvasReg);
-    regularObstacleMaterial = new THREE.MeshStandardMaterial({
-        map: texReg, emissive: 0x00f3ff, emissiveIntensity: 0.3, roughness: 0.2
-    });
+    const configurations = [
+        { id: 'tier0', bg: '#111122', text: '#00f3ff', glow: 0x00f3ff }, // Base Cyan
+        { id: 'tier1', bg: '#110505', text: '#ff3300', glow: 0xff3300 }, // Tier 1 Volcano Red
+        { id: 'tier2', bg: '#0b0214', text: '#00ffaa', glow: 0x00ffaa }, // Tier 2 Acid Cyan
+        { id: 'tier3', bg: '#000000', text: '#ffaa00', glow: 0xffaa00 }  // Tier 3 Void Gold
+    ];
 
-    const canvasHell = document.createElement('canvas');
-    canvasHell.width = 256; canvasHell.height = 256;
-    const ctxHell = canvasHell.getContext('2d');
-    ctxHell.fillStyle = '#110505'; ctxHell.fillRect(0, 0, 256, 256);
-    ctxHell.strokeStyle = '#ff3300'; ctxHell.lineWidth = 8; ctxHell.strokeRect(4, 4, 248, 248);
-    ctxHell.fillStyle = '#ff3300'; ctxHell.font = 'bold 110px monospace';
-    ctxHell.textAlign = 'center'; ctxHell.textBaseline = 'middle';
-    ctxHell.fillText('KM', 128, 128);
-    
-    const texHell = new THREE.CanvasTexture(canvasHell);
-    hellObstacleMaterial = new THREE.MeshStandardMaterial({
-        map: texHell, emissive: 0xff3300, emissiveIntensity: 0.4, roughness: 0.2
+    configurations.forEach(cfg => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256; canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = cfg.bg; ctx.fillRect(0, 0, 256, 256);
+        ctx.strokeStyle = cfg.text; ctx.lineWidth = 10; ctx.strokeRect(5, 5, 246, 246);
+        ctx.fillStyle = cfg.text; ctx.font = 'bold 110px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('KM', 128, 128);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        obstacleMaterials[cfg.id] = new THREE.MeshStandardMaterial({
+            map: texture, emissive: cfg.glow, emissiveIntensity: 0.4, roughness: 0.2
+        });
     });
 }
 
@@ -146,33 +146,50 @@ function createTrackSection(zOffset) {
 }
 
 /**
- * Generates modular tree architecture sets with detachable leaf objects
+ * Spawns massive trees that outline the flight track corridors
  */
 function spawnTree(xPos, zPos) {
     const treeGroup = new THREE.Group();
     
-    // Create Trunk
-    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.4, 3.5, 5);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: isHellTheme ? 0x221111 : 0x5a3d28, roughness: 0.9 });
+    // Scale vectors up drastically to simulate an intense forest environment
+    const trunkHeight = 6.0 + Math.random() * 4.0;
+    const trunkRadius = 0.4 + Math.random() * 0.3;
+
+    // Create Trunk Mesh
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.6, trunkRadius, trunkHeight, 6);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x422d1e, roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 1.75;
+    trunk.position.y = trunkHeight / 2;
     treeGroup.add(trunk);
 
-    // Create custom angular branches array skeleton
-    const branchGeo = new THREE.BoxGeometry(1.2, 0.15, 0.15);
-    const b1 = new THREE.Mesh(branchGeo, trunkMat); b1.position.set(0.5, 2.2, 0); b1.rotation.z = 0.4; treeGroup.add(b1);
-    const b2 = new THREE.Mesh(branchGeo, trunkMat); b2.position.set(-0.5, 2.6, 0); b2.rotation.z = -0.4; treeGroup.add(b2);
+    // Create structural branch geometry arms extending out
+    const branchesGroup = new THREE.Group();
+    branchesGroup.name = "branches";
+    const branchCount = 3 + Math.floor(Math.random() * 3);
+    for(let i=0; i<branchCount; i++) {
+        const bGeo = new THREE.BoxGeometry(2.5, 0.2, 0.2);
+        const bMesh = new THREE.Mesh(bGeo, trunkMat);
+        bMesh.position.set(Math.random() > 0.5 ? 1 : -1, (trunkHeight * 0.4) + (i * 1.2), 0);
+        bMesh.rotation.z = Math.random() > 0.5 ? 0.3 : -0.3;
+        branchesGroup.add(bMesh);
+    }
+    treeGroup.add(branchesGroup);
 
-    // Create Leaves Stack (Only build if not currently in Hell Mode)
+    // Create Leaves Group Container Node
     const leavesGroup = new THREE.Group();
     leavesGroup.name = "foliage";
     
-    if (!isHellTheme) {
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x004411, roughness: 0.6 });
-        const coneGeo1 = new THREE.ConeGeometry(1.4, 2.2, 5);
-        const l1 = new THREE.Mesh(coneGeo1, leafMat); l1.position.y = 3.5; leavesGroup.add(l1);
-        const coneGeo2 = new THREE.ConeGeometry(1.0, 1.6, 5);
-        const l2 = new THREE.Mesh(coneGeo2, leafMat); l2.position.y = 4.4; leavesGroup.add(l2);
+    // Fill out structural leaf clusters if initialized during phase 0
+    if (currentTier === 0) {
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
+        const clusterCount = 3;
+        for(let j=0; j<clusterCount; j++) {
+            const size = 3.5 - (j * 0.8);
+            const lGeo = new THREE.ConeGeometry(size, 4.0, 5);
+            const lMesh = new THREE.Mesh(lGeo, leafMat);
+            lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+            leavesGroup.add(lMesh);
+        }
     }
     treeGroup.add(leavesGroup);
 
@@ -206,7 +223,9 @@ function spawnObstacle(zPos) {
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
     const obsGeo = new THREE.BoxGeometry(4.5, 4, 2);
     
-    const obstacle = new THREE.Mesh(obsGeo, isHellTheme ? hellObstacleMaterial : regularObstacleMaterial);
+    // Select material from pre-compiled tier atlas array map
+    const activeMat = obstacleMaterials['tier' + currentTier];
+    const obstacle = new THREE.Mesh(obsGeo, activeMat);
     obstacle.position.set(chosenLane, 2, zPos);
     
     scene.add(obstacle);
@@ -253,14 +272,14 @@ function startProceduralEngineAudio() {
     engineOscillator.start();
 
     ambientSynthInterval = setInterval(() => {
-        if(gameState === "PLAYING" && !isHellTheme) {
-            const notes = [110, 130, 146, 165];
-            playAudioTone(notes[Math.floor(Math.random() * notes.length)], "triangle", 0.8, 0.2 * bgmVolume);
-        } else if (gameState === "PLAYING" && isHellTheme) {
-            const notes = [73, 82, 87, 98];
-            playAudioTone(notes[Math.floor(Math.random() * notes.length)], "sawtooth", 0.6, 0.15 * bgmVolume);
+        if(gameState === "PLAYING") {
+            const roots = [110, 73, 55, 41]; // Shifts bass profile based on tier depth
+            const activeRoot = roots[currentTier] || 110;
+            const notes = [activeRoot, activeRoot * 1.2, activeRoot * 1.5, activeRoot * 1.8];
+            const waveTypes = ["triangle", "sawtooth", "sawtooth", "square"];
+            playAudioTone(notes[Math.floor(Math.random() * notes.length)], waveTypes[currentTier], 0.6, 0.18 * bgmVolume);
         }
-    }, 600);
+    }, 550);
 }
 
 function modulateEngineSound() {
@@ -286,46 +305,89 @@ function togglePauseState() {
     playAudioTone(300, "sine", 0.15, 0.2);
 }
 
+/**
+ * Handles full progressive theme matrix adjustments seamlessly across world elements
+ */
+function shiftingThemeStateMatrix(tierIndex) {
+    currentTier = tierIndex;
+    
+    // Theme Blueprint Data Profiles Definition Matrix
+    const tiers = [
+        { sky: 0xa3e5ff, fogDen: 0.008, sun: 0xffffff, amb: 0x7cdaff, track: 0x004411, gLine: 0x00ff66, gSub: 0x00aa44, rail: 0xff0066, wood: 0x5a3d28, leafColor: 0x00ff44 }, // Tier 0 (Alpine)
+        { sky: 0x1a0505, fogDen: 0.015, sun: 0xff2200, amb: 0x3a0000, track: 0x110505, gLine: 0xff3300, gSub: 0x551100, rail: 0xaa0000, wood: 0x1f1111 }, // Tier 1 (Volcanic Ash)
+        { sky: 0x0c0114, fogDen: 0.018, sun: 0x9900ff, amb: 0x110022, track: 0x05010a, gLine: 0x00ffaa, gSub: 0x004422, rail: 0x6600cc, wood: 0x3d0066 }, // Tier 2 (Radioactive Acid)
+        { sky: 0x000000, fogDen: 0.025, sun: 0xffaa00, amb: 0x0a0a0a, track: 0x020202, gLine: 0xff0044, gSub: 0x330000, rail: 0xffaa00, wood: 0xdddddd }  // Tier 3 (Abyssal Void)
+    ];
+
+    const currentBlueprint = tiers[tierIndex];
+
+    // Apply main horizon global fog and canvas color profiles
+    scene.background = new THREE.Color(currentBlueprint.sky);
+    scene.fog.color = new THREE.Color(currentBlueprint.sky);
+    scene.fog.density = currentBlueprint.fogDen;
+
+    const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.setHex(currentBlueprint.sun);
+    const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.setHex(currentBlueprint.amb);
+
+    // Re-skin track components with fresh grid parameters maps
+    trackPieces.forEach(track => {
+        const roadMesh = track.children[0];
+        roadMesh.material.color.setHex(currentBlueprint.track);
+        
+        const oldGrid = roadMesh.children[0]; roadMesh.remove(oldGrid);
+        const freshGrid = new THREE.GridHelper(40, 10, currentBlueprint.gLine, currentBlueprint.gSub);
+        freshGrid.rotation.x = Math.PI / 2; freshGrid.position.set(0, 0.02, 0);
+        roadMesh.add(freshGrid);
+
+        // Track side fences
+        track.children[1].material.color.setHex(currentBlueprint.rail);
+        track.children[2].material.color.setHex(currentBlueprint.rail);
+    });
+
+    // Re-morph and re-skin complete active forest layers
+    trees.forEach(treeGroup => {
+        // Adjust main trunk color matrices elements
+        treeGroup.children[0].material.color.setHex(currentBlueprint.wood);
+        
+        // Adjust branch system structures colors
+        const branchGroup = treeGroup.getObjectByName("branches");
+        if(branchGroup) {
+            branchGroup.children.forEach(b => b.material.color.setHex(currentBlueprint.wood));
+        }
+
+        // Adjust foliage conditions
+        const leavesGroup = treeGroup.getObjectByName("foliage");
+        if (leavesGroup) {
+            leavesGroup.clear(); // Clear old layout meshes context
+            
+            // Tier 0 is the only phase containing foliage cluster objects
+            if (tierIndex === 0) {
+                const trunkHeight = treeGroup.children[0].geometry.parameters.height;
+                const leafMat = new THREE.MeshStandardMaterial({ color: currentBlueprint.leafColor, emissive: 0x003311, roughness: 0.6 });
+                for(let j=0; j<3; j++) {
+                    const size = 3.5 - (j * 0.8);
+                    const lGeo = new THREE.ConeGeometry(size, 4.0, 5);
+                    const lMesh = new THREE.Mesh(lGeo, leafMat);
+                    lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+                    leavesGroup.add(lMesh);
+                }
+            }
+        }
+    });
+
+    // Fire sound structural threshold feedback alert signals
+    playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
+}
+
 function startRun() {
     startProceduralEngineAudio();
     if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 
-    speed = 0.6; distance = 0; coinsCount = 0; isHellTheme = false;
+    speed = 0.6; distance = 0; coinsCount = 0; 
     coinsUi.innerText = "0";
     
-    scene.background = new THREE.Color(0xa3e5ff); scene.fog.color = new THREE.Color(0xa3e5ff); scene.fog.density = 0.008;
-    const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.setHex(0xffffff);
-    const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.setHex(0x7cdaff);
-
-    trackPieces.forEach((track, index) => {
-        track.position.z = index * -40;
-        const roadMesh = track.children[0]; roadMesh.material.color.setHex(0x004411);
-        const gridMesh = roadMesh.children[0]; scene.remove(gridMesh);
-        const freshGrid = new THREE.GridHelper(40, 10, 0x00ff66, 0x00aa44);
-        freshGrid.rotation.x = Math.PI / 2; freshGrid.position.set(0, 0.02, 0); roadMesh.add(freshGrid);
-    });
-
-    // Reset environment side trees architecture states back to healthy greens
-    trees.forEach((treeGroup, index) => {
-        const sideSign = (index % 2 === 0) ? -11 : 11;
-        const targetZ = Math.floor(index / 2) * -15;
-        treeGroup.position.set(sideSign, 0, targetZ);
-        
-        // Restore trunk color configurations
-        treeGroup.children[0].material.color.setHex(0x5a3d28);
-        treeGroup.children[1].material.color.setHex(0x5a3d28);
-        treeGroup.children[2].material.color.setHex(0x5a3d28);
-
-        // Regenerate complete leaf elements matrices inside foliage layers
-        const leavesGroup = treeGroup.getObjectByName("foliage");
-        leavesGroup.clear(); // Clear old dead states out
-        
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x004411, roughness: 0.6 });
-        const coneGeo1 = new THREE.ConeGeometry(1.4, 2.2, 5);
-        const l1 = new THREE.Mesh(coneGeo1, leafMat); l1.position.y = 3.5; leavesGroup.add(l1);
-        const coneGeo2 = new THREE.ConeGeometry(1.0, 1.6, 5);
-        const l2 = new THREE.Mesh(coneGeo2, leafMat); l2.position.y = 4.4; leavesGroup.add(l2);
-    });
+    // Fire structural transformation matrix back to base configurations
+    shiftingThemeStateMatrix(0);
 
     obstacles.forEach(obs => scene.remove(obs)); coins.forEach(c => scene.remove(c));
     obstacles = []; coins = [];
@@ -338,35 +400,6 @@ function startRun() {
     
     playAudioTone(523.25, "sine", 0.3, 0.4); 
     gameState = "PLAYING";
-}
-
-function triggerHellOverdriveTransformation() {
-    isHellTheme = true;
-    scene.background = new THREE.Color(0x1a0505); scene.fog.color = new THREE.Color(0x1a0505); scene.fog.density = 0.015;
-    const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.setHex(0xff2200);
-    const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.setHex(0x3a0000);
-
-    // 1. Re-skin running tracks layers to charcoal and lava
-    trackPieces.forEach(track => {
-        const roadMesh = track.children[0]; roadMesh.material.color.setHex(0x110505);
-        const oldGrid = roadMesh.children[0]; roadMesh.remove(oldGrid);
-        const lavaGrid = new THREE.GridHelper(40, 10, 0xff3300, 0x551100);
-        lavaGrid.rotation.x = Math.PI / 2; lavaGrid.position.set(0, 0.02, 0); roadMesh.add(lavaGrid);
-    });
-
-    // 2. STRIP LEAVES DYNAMICALLY — Leave only deadwood branches
-    trees.forEach(treeGroup => {
-        // Darken trunk and skeleton branches elements to charred gray-black
-        treeGroup.children[0].material.color.setHex(0x221111); // Main trunk
-        treeGroup.children[1].material.color.setHex(0x221111); // Branch skeletal 1
-        treeGroup.children[2].material.color.setHex(0x221111); // Branch skeletal 2
-
-        // Flush all geometric leaf node modules inside the foliage layer out of memory
-        const leavesGroup = treeGroup.getObjectByName("foliage");
-        if (leavesGroup) leavesGroup.clear(); 
-    });
-
-    playAudioTone(90, "sawtooth", 0.6, 0.5);
 }
 
 function update() {
@@ -387,7 +420,14 @@ function update() {
     const computedVelocityKMH = Math.floor(speed * 180);
     speedUi.innerText = computedVelocityKMH; distanceUi.innerText = distance;
 
-    if (computedVelocityKMH >= 200 && !isHellTheme) triggerHellOverdriveTransformation();
+    // Evaluates dynamic metrics down real-time threshold check rulesets
+    if (computedVelocityKMH >= 300 && currentTier < 3) {
+        shiftingThemeStateMatrix(3);
+    } else if (computedVelocityKMH >= 250 && computedVelocityKMH < 300 && currentTier < 2) {
+        shiftingThemeStateMatrix(2);
+    } else if (computedVelocityKMH >= 200 && computedVelocityKMH < 250 && currentTier < 1) {
+        shiftingThemeStateMatrix(1);
+    }
 
     trackPieces.forEach(track => {
         track.position.z += speed;
@@ -397,7 +437,6 @@ function update() {
     // Handle Infinite Side Tree Loop Mechanics
     trees.forEach(treeGroup => {
         treeGroup.position.z += speed;
-        // If a tree flows completely behind the camera frame viewpoint, recycle it forward over the horizon
         if (treeGroup.position.z > 20) {
             treeGroup.position.z = -220;
         }
