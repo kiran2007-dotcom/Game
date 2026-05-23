@@ -3,26 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLICK-RUN // Next-Gen Flying Core</title>
+    <title>SLICK-RUN // Next-Gen Pro Flying Core</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Three.js Visual Viewport Injection Library Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
     <div id="ui-layer">
         <!-- Live Real-Time Telemetry Readouts -->
-        <div id="hud">
-            <div>VELOCITY: <span id="speed-ui">0</span> KM/H</div>
-            <div id="logo">SLICK-RUN</div>
-            <div>DISTANCE: <span id="distance-ui">0</span>M</div>
+        <div id="hud" class="hidden">
+            <button id="pause-btn" class="btn-small">|| PAUSE</button>
+            <div class="hud-center">
+                <div>VELOCITY: <span id="speed-ui">0</span> KM/H</div>
+                <div>DISTANCE: <span id="distance-ui">0</span>M</div>
+                <div style="color: #ffcc00;">COINS: <span id="coins-ui">0</span></div>
+            </div>
+            <div id="logo-small">SLICK-RUN</div>
         </div>
 
-        <!-- Start Portal Dashboard -->
+        <!-- Start Portal Dashboard / Menu Matrix -->
         <div id="start-screen" class="overlay">
             <h1>SLICK-RUN</h1>
             <p>DATA REPLICATOR INTERCEPT PROTOCOL</p>
-            <p class="controls">Use <b>A / D</b> or <b>LEFT / RIGHT ARROWS</b> to dodge walls</p>
+            
+            <div class="menu-container">
+                <!-- Drone Selection -->
+                <div class="menu-box">
+                    <h3>SELECT DRONE</h3>
+                    <div class="drone-select-row">
+                        <div class="drone-option active" data-drone="vanguard">
+                            <span class="name">VANGUARD</span>
+                            <span class="spec">COLOR: ORANGE | SENS: HIGH</span>
+                        </div>
+                        <div class="drone-option" data-drone="phantom">
+                            <span class="name">PHANTOM</span>
+                            <span class="spec">COLOR: PURPLE | SENS: ULTRA</span>
+                        </div>
+                        <div class="drone-option" data-drone="spectre">
+                            <span class="name">SPECTRE</span>
+                            <span class="spec">COLOR: CYAN | SENS: MID</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sound Configurations -->
+                <div class="menu-box">
+                    <h3>SYSTEM CONFIG</h3>
+                    <div class="setting-row">
+                        <label>SFX VOLUME</label>
+                        <input type="range" id="sfx-vol" min="0" max="1" step="0.1" value="0.7">
+                    </div>
+                    <div class="setting-row">
+                        <label>BGM VOLUME</label>
+                        <input type="range" id="bgm-vol" min="0" max="1" step="0.1" value="0.5">
+                    </div>
+                </div>
+            </div>
+
             <button id="start-btn">INITIALIZE RUN</button>
+        </div>
+
+        <!-- Dynamic Pause Screen Overlay -->
+        <div id="pause-screen" class="overlay hidden">
+            <h1>PAUSED</h1>
+            <p>LINK INTERRUPTED — STANDING BY</p>
+            <button id="resume-btn">RESUME LINK</button>
         </div>
 
         <!-- Terminal Termination Feedback -->
@@ -33,7 +77,6 @@
         </div>
     </div>
 
-    <!-- Target mounting node container for WebGL Canvas viewports -->
     <div id="3d-container"></div>
     <script src="game.js"></script>
 </body>
