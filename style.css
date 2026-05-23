@@ -41,13 +41,21 @@ body, html {
 
 .hidden { display: none !important; }
 
+#branding-tag {
+    font-size: 14px;
+    letter-spacing: 6px;
+    color: var(--neon-magenta);
+    text-shadow: 0 0 8px var(--neon-magenta);
+    margin-bottom: -5px;
+    font-weight: bold;
+}
+
 h1 {
-    font-size: 48px; letter-spacing: 8px; margin-bottom: 5px; color: #fff;
+    font-size: 72px; letter-spacing: 12px; margin-bottom: 5px; color: #fff;
     text-shadow: 0 0 20px var(--neon-cyan); text-align: center;
 }
 
 p { color: #ccc; margin-bottom: 25px; letter-spacing: 1px; font-size: 13px;}
-.controls { color: #888; font-size: 13px; text-align: center; margin-top: 15px; }
 
 .menu-container {
     display: flex; gap: 30px; width: 85%; max-width: 850px; margin-bottom: 30px;
@@ -95,5 +103,4 @@ button {
 }
 
 button:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 25px var(--neon-cyan); }
-
 .btn-small { padding: 6px 14px; font-size: 12px; border-width: 1px; }
