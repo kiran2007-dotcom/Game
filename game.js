@@ -15,10 +15,6 @@ let coinsCount = 0;
 let currentTier = 0; 
 const keys = {};
 
-// Mobile Touch Control Variables
-let touchStartX = 0;
-const minSwipeDistance = 30; 
-
 // Active Selected Drone Configuration Mapping
 let activeDroneType = "vanguard";
 const droneSpecs = {
@@ -51,13 +47,12 @@ const _obstacleBox = new THREE.Box3();
 
 // --- LERP MATRIX THEME ENGINE STATES ---
 const themeTiers = [
-    { sky: new THREE.Color(0xa3e5ff), fogDen: 0.008, sun: new THREE.Color(0xffffff), amb: new THREE.Color(0x7cdaff), track: new THREE.Color(0x004411), rail: new THREE.Color(0xff0066), wood: new THREE.Color(0x5a3d28), gLine: 0x00ff66, gSub: 0x00aa44 }, 
-    { sky: new THREE.Color(0x1a0505), fogDen: 0.015, sun: new THREE.Color(0xff2200), amb: new THREE.Color(0x3a0000), track: new THREE.Color(0x110505), rail: new THREE.Color(0xaa0000), wood: new THREE.Color(0x1f1111), gLine: 0xff3300, gSub: 0x551100 }, 
-    { sky: new THREE.Color(0x0c0114), fogDen: 0.018, sun: new THREE.Color(0x9900ff), amb: new THREE.Color(0x110022), track: new THREE.Color(0x05010a), rail: new THREE.Color(0x6600cc), wood: new THREE.Color(0x3d0066), gLine: 0x00ffaa, gSub: 0x004422 }, 
-    { sky: new THREE.Color(0x000000), fogDen: 0.025, sun: new THREE.Color(0xffaa00), amb: new THREE.Color(0x0a0a0a), track: new THREE.Color(0x020202), rail: new THREE.Color(0xffaa00), wood: new THREE.Color(0xdddddd), gLine: 0xff0044, gSub: 0x330000 }  
+    { sky: new THREE.Color(0xa3e5ff), fogDen: 0.008, sun: new THREE.Color(0xffffff), amb: new THREE.Color(0x7cdaff), track: new THREE.Color(0x004411), rail: new THREE.Color(0xff0066), wood: new THREE.Color(0x5a3d28) }, 
+    { sky: new THREE.Color(0x1a0505), fogDen: 0.015, sun: new THREE.Color(0xff2200), amb: new THREE.Color(0x3a0000), track: new THREE.Color(0x110505), rail: new THREE.Color(0xaa0000), wood: new THREE.Color(0x1f1111) }, 
+    { sky: new THREE.Color(0x0c0114), fogDen: 0.018, sun: new THREE.Color(0x9900ff), amb: new THREE.Color(0x110022), track: new THREE.Color(0x05010a), rail: new THREE.Color(0x6600cc), wood: new THREE.Color(0x3d0066) }, 
+    { sky: new THREE.Color(0x000000), fogDen: 0.025, sun: new THREE.Color(0xffaa00), amb: new THREE.Color(0x0a0a0a), track: new THREE.Color(0x020202), rail: new THREE.Color(0xffaa00), wood: new THREE.Color(0xdddddd) }  
 ];
 
-// Active interpolation states for blending colors smoothly
 let currentVisuals = {
     sky: new THREE.Color(0xa3e5ff),
     fogDen: 0.008,
@@ -67,7 +62,7 @@ let currentVisuals = {
     rail: new THREE.Color(0xff0066),
     wood: new THREE.Color(0x5a3d28)
 };
-const lerpSpeed = 0.015; // Lower values make the color transition slower and smoother
+const lerpSpeed = 0.015; 
 
 /**
  * Initializes the full WebGL pipeline and environmental configurations.
@@ -83,7 +78,7 @@ function init() {
     renderer = new THREE.WebGLRenderer({ 
         antialias: false, 
         powerPreference: "high-performance",
-        precision: "mediump"
+        precision: "mediump" // Crucial optimization for mobile graphics chips
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     
@@ -106,53 +101,81 @@ function init() {
         createTrackSection(i * -40);
     }
 
-    for(let z = 0; z > -240; z -= 8) {
+    // REDUCED OBJECT POOLING: Generates less total tree nodes to prevent mobile hardware overhead spikes
+    for(let z = 0; z > -240; z -= 16) {
         spawnTree(-11 - Math.random() * 3, z);  
-        spawnTree(-15 - Math.random() * 4, z + 3);  
-        spawnTree(-22 - Math.random() * 6, z - 2);  
-        spawnTree(-30 - Math.random() * 8, z + 1);  
-
+        spawnTree(-16 - Math.random() * 5, z + 4);  
         spawnTree(11 + Math.random() * 3, z);   
-        spawnTree(15 + Math.random() * 4, z + 3);   
-        spawnTree(22 + Math.random() * 6, z - 2);   
-        spawnTree(30 + Math.random() * 8, z + 1);   
+        spawnTree(16 + Math.random() * 5, z + 4);   
     }
 
     setupMenuInteractions();
-    setupMobileControls(); 
+    injectMobileOnScreenButtons(); // Automatically renders visual HTML mobile controls if on touch layout
     
-    window.innerWidth < 768 ? renderer.setPixelRatio(1) : renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    window.innerWidth < 768 ? renderer.setPixelRatio(1) : renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('keydown', handleGlobalKeydown);
 }
 
-function setupMobileControls() {
-    window.addEventListener('touchstart', (e) => {
-        touchStartX = e.touches[0].clientX;
-    }, { passive: true });
+/**
+ * Safe injection of physical HTML Left/Right Buttons directly onto Mobile Viewports
+ */
+function injectMobileOnScreenButtons() {
+    // Only apply if viewport matches standard tablet/phone metrics
+    if (window.innerWidth > 1024) return;
 
-    window.addEventListener('touchmove', (e) => {
-        if (gameState !== "PLAYING" || !player) return;
-        
-        const touchX = e.touches[0].clientX;
-        const diffX = touchX - touchStartX;
+    const btnContainer = document.createElement('div');
+    btnContainer.id = "mobile-controls-layer";
+    btnContainer.style.position = "absolute";
+    btnContainer.style.bottom = "20px";
+    btnContainer.style.left = "0";
+    btnContainer.style.width = "100%";
+    btnContainer.style.height = "90px";
+    btnContainer.style.display = "flex";
+    btnContainer.style.justifyContent = "space-between";
+    btnContainer.style.padding = "0 25px";
+    btnContainer.style.boxSizing = "border-box";
+    btnContainer.style.zIndex = "10000";
+    btnContainer.style.pointerEvents = "none"; // Keeps container container transparent to clicks
 
-        if (Math.abs(diffX) > minSwipeDistance) {
-            if (diffX > 0) {
-                keys['arrowright'] = true;
-                keys['arrowleft'] = false;
-            } else {
-                keys['arrowleft'] = true;
-                keys['arrowright'] = false;
-            }
-            touchStartX = touchX; 
-        }
-    }, { passive: true });
+    const btnStyle = `
+        width: 85px;
+        height: 85px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        border-radius: 50%;
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        webkit-user-select: none;
+        pointer-events: auto;
+        backdrop-filter: blur(4px);
+    `;
 
-    window.addEventListener('touchend', () => {
-        keys['arrowleft'] = false;
-        keys['arrowright'] = false;
-    }, { passive: true });
+    const leftBtn = document.createElement('div');
+    leftBtn.style.cssText = btnStyle;
+    leftBtn.innerText = "◀";
+    
+    const rightBtn = document.createElement('div');
+    rightBtn.style.cssText = btnStyle;
+    rightBtn.innerText = "▶";
+
+    // Pointer event bindings for perfect latency-free desktop/mobile emulation compatibility
+    leftBtn.onpointerdown = (e) => { e.preventDefault(); keys['arrowleft'] = true; };
+    leftBtn.onpointerup = (e) => { e.preventDefault(); keys['arrowleft'] = false; };
+    leftBtn.onpointerleave = () => { keys['arrowleft'] = false; };
+    
+    rightBtn.onpointerdown = (e) => { e.preventDefault(); keys['arrowright'] = true; };
+    rightBtn.onpointerup = (e) => { e.preventDefault(); keys['arrowright'] = false; };
+    rightBtn.onpointerleave = () => { keys['arrowright'] = false; };
+
+    btnContainer.appendChild(leftBtn);
+    btnContainer.appendChild(rightBtn);
+    document.body.appendChild(btnContainer);
 }
 
 function generateBrandedTextures() {
@@ -208,7 +231,7 @@ function spawnTree(xPos, zPos) {
     const trunkHeight = 6.0 + Math.random() * 5.0;
     const trunkRadius = 0.45 + Math.random() * 0.35;
 
-    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 5);
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 4); // Fast low poly face footprint
     const trunkMat = new THREE.MeshStandardMaterial({ color: currentVisuals.wood.getHex(), roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = trunkHeight / 2;
@@ -216,9 +239,9 @@ function spawnTree(xPos, zPos) {
 
     const branchesGroup = new THREE.Group();
     branchesGroup.name = "branches";
-    const branchCount = 2 + Math.floor(Math.random() * 2);
+    const branchCount = 2;
     for(let i=0; i<branchCount; i++) {
-        const bGeo = new THREE.BoxGeometry(2.5, 0.22, 0.22);
+        const bGeo = new THREE.BoxGeometry(2.2, 0.22, 0.22);
         const bMesh = new THREE.Mesh(bGeo, trunkMat);
         bMesh.position.set(Math.random() > 0.5 ? 1.0 : -1.0, (trunkHeight * 0.35) + (i * 1.5), 0);
         bMesh.rotation.z = Math.random() > 0.5 ? 0.30 : -0.30;
@@ -289,7 +312,7 @@ function spawnObstacle(zPos) {
 }
 
 function spawnCoinSeries(laneX, startZ) {
-    const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.20, 12); 
+    const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.20, 10); 
     coinGeo.rotateX(Math.PI / 2);
     
     const coinMat = new THREE.MeshStandardMaterial({ 
@@ -363,21 +386,14 @@ function togglePauseState() {
     playAudioTone(300, "sine", 0.15, 0.2);
 }
 
-/**
- * Updates Tier tracking indexes and sounds, leaving real visual updates to linear math in ticks
- */
 function shiftingThemeStateMatrix(tierIndex) {
     currentTier = tierIndex;
     playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
 }
 
-/**
- * Per-Frame Asynchronous Theme Lerp Engine Loop
- */
 function processVisualThemeInterpolation() {
     const target = themeTiers[currentTier];
 
-    // Lerp individual runtime vector spectrum variables
     currentVisuals.sky.lerp(target.sky, lerpSpeed);
     currentVisuals.sun.lerp(target.sun, lerpSpeed);
     currentVisuals.amb.lerp(target.amb, lerpSpeed);
@@ -386,18 +402,13 @@ function processVisualThemeInterpolation() {
     currentVisuals.wood.lerp(target.wood, lerpSpeed);
     currentVisuals.fogDen += (target.fogDen - currentVisuals.fogDen) * lerpSpeed;
 
-    // Apply interpolated states into active environment references
     scene.background.copy(currentVisuals.sky);
     scene.fog.color.copy(currentVisuals.sky);
     scene.fog.density = currentVisuals.fogDen;
 
-    const sun = scene.getObjectByName("sunlight"); 
-    if(sun) sun.color.copy(currentVisuals.sun);
-    
-    const ambient = scene.getObjectByName("ambientlight"); 
-    if(ambient) ambient.color.copy(currentVisuals.amb);
+    const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.copy(currentVisuals.sun);
+    const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.copy(currentVisuals.amb);
 
-    // Apply color lerps across the running track buffers
     trackPieces.forEach(track => {
         const roadMesh = track.children[0];
         roadMesh.material.color.copy(currentVisuals.track);
@@ -405,7 +416,6 @@ function processVisualThemeInterpolation() {
         track.children[2].material.color.copy(currentVisuals.rail);
     });
 
-    // Handle smooth bark color changes on structural scenery trees
     trees.forEach(treeGroup => {
         treeGroup.children[0].material.color.copy(currentVisuals.wood);
         const branchGroup = treeGroup.getObjectByName("branches");
@@ -422,7 +432,6 @@ function startRun() {
     speed = 0.6; distance = 0; coinsCount = 0; 
     coinsUi.innerText = "0";
     
-    // Hard-reset the base visuals immediately on new run setup
     currentTier = 0;
     const initial = themeTiers[0];
     currentVisuals.sky.copy(initial.sky);
@@ -451,9 +460,9 @@ function update() {
     if (gameState !== "PLAYING") return;
     const spec = droneSpecs[activeDroneType];
 
-    // Constantly calculate real-time smooth color adjustments
     processVisualThemeInterpolation();
 
+    // Supports both physical on-screen UI button matrices and desktop keyboard triggers safely
     if ((keys['a'] || keys['arrowleft']) && player.position.x > -6.5) player.position.x -= spec.lateral;
     if ((keys['d'] || keys['arrowright']) && player.position.x < 6.5) player.position.x += spec.lateral;
 
@@ -467,7 +476,6 @@ function update() {
     const computedVelocityKMH = Math.floor(speed * 180);
     speedUi.innerText = computedVelocityKMH; distanceUi.innerText = distance;
 
-    // Smooth state tier transitions checked continuously
     if (computedVelocityKMH >= 300 && currentTier < 3) {
         shiftingThemeStateMatrix(3);
     } else if (computedVelocityKMH >= 250 && computedVelocityKMH < 300 && currentTier < 2) {
