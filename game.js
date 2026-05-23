@@ -77,12 +77,20 @@ function init() {
         createTrackSection(i * -40);
     }
 
-    // Generate massive initial forest layer on both banks
-    for(let z = 0; z > -240; z -= 10) {
-        spawnTree(-12 - Math.random() * 3, z);
-        spawnTree(-16 - Math.random() * 4, z);
-        spawnTree(12 + Math.random() * 3, z);
-        spawnTree(16 + Math.random() * 4, z);
+    // MULTI-LAYERED DEEP FOREST GENERATION
+    // Spawns multiple horizontal ranks of trees outwards to create a thick forest wilderness
+    for(let z = 0; z > -240; z -= 8) {
+        // --- Left Side Forest Rows ---
+        spawnTree(-11 - Math.random() * 3, z);  // Row 1 (Track Edge)
+        spawnTree(-15 - Math.random() * 4, z + 3);  // Row 2 (Mid-depth)
+        spawnTree(-22 - Math.random() * 6, z - 2);  // Row 3 (Deep Forest)
+        spawnTree(-30 - Math.random() * 8, z + 1);  // Row 4 (Horizon Forest)
+
+        // --- Right Side Forest Rows ---
+        spawnTree(11 + Math.random() * 3, z);   // Row 1 (Track Edge)
+        spawnTree(15 + Math.random() * 4, z + 3);   // Row 2 (Mid-depth)
+        spawnTree(22 + Math.random() * 6, z - 2);   // Row 3 (Deep Forest)
+        spawnTree(30 + Math.random() * 8, z + 1);   // Row 4 (Horizon Forest)
     }
 
     setupMenuInteractions();
@@ -96,10 +104,10 @@ function init() {
  */
 function generateBrandedTextures() {
     const configurations = [
-        { id: 'tier0', bg: '#111122', text: '#00f3ff', glow: 0x00f3ff }, // Base Cyan
-        { id: 'tier1', bg: '#110505', text: '#ff3300', glow: 0xff3300 }, // Tier 1 Volcano Red
-        { id: 'tier2', bg: '#0b0214', text: '#00ffaa', glow: 0x00ffaa }, // Tier 2 Acid Cyan
-        { id: 'tier3', bg: '#000000', text: '#ffaa00', glow: 0xffaa00 }  // Tier 3 Void Gold
+        { id: 'tier0', bg: '#111122', text: '#00f3ff', glow: 0x00f3ff }, 
+        { id: 'tier1', bg: '#110505', text: '#ff3300', glow: 0xff3300 }, 
+        { id: 'tier2', bg: '#0b0214', text: '#00ffaa', glow: 0x00ffaa }, 
+        { id: 'tier3', bg: '#000000', text: '#ffaa00', glow: 0xffaa00 }  
     ];
 
     configurations.forEach(cfg => {
@@ -108,9 +116,9 @@ function generateBrandedTextures() {
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = cfg.bg; ctx.fillRect(0, 0, 256, 256);
         ctx.strokeStyle = cfg.text; ctx.lineWidth = 10; ctx.strokeRect(5, 5, 246, 246);
-        ctx.fillStyle = cfg.text; ctx.font = 'bold 95px monospace'; // Adjusted for 3-letter layout
+        ctx.fillStyle = cfg.text; ctx.font = 'bold 95px monospace'; 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('RUN', 128, 128); // Stamped RUN on blocks
+        ctx.fillText('RUN', 128, 128); 
         
         const texture = new THREE.CanvasTexture(canvas);
         obstacleMaterials[cfg.id] = new THREE.MeshStandardMaterial({
@@ -144,11 +152,20 @@ function createTrackSection(zOffset) {
 
 function spawnTree(xPos, zPos) {
     const treeGroup = new THREE.Group();
-    const trunkHeight = 6.0 + Math.random() * 4.0;
-    const trunkRadius = 0.4 + Math.random() * 0.3;
+    
+    // Scale vectors up drastically to simulate an intense forest environment
+    const trunkHeight = 6.0 + Math.random() * 5.0;
+    const trunkRadius = 0.45 + Math.random() * 0.35;
 
-    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.6, trunkRadius, trunkHeight, 6);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x422d1e, roughness: 0.9 });
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 6);
+    
+    // Switch colors dynamically based on current tier profile context
+    let trunkColor = 0x422d1e;
+    if (currentTier === 1) trunkColor = 0x1f1111;
+    if (currentTier === 2) trunkColor = 0x3d0066;
+    if (currentTier === 3) trunkColor = 0xdddddd;
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = trunkHeight / 2;
     treeGroup.add(trunk);
@@ -157,10 +174,10 @@ function spawnTree(xPos, zPos) {
     branchesGroup.name = "branches";
     const branchCount = 3 + Math.floor(Math.random() * 3);
     for(let i=0; i<branchCount; i++) {
-        const bGeo = new THREE.BoxGeometry(2.5, 0.2, 0.2);
+        const bGeo = new THREE.BoxGeometry(3.0, 0.25, 0.25);
         const bMesh = new THREE.Mesh(bGeo, trunkMat);
-        bMesh.position.set(Math.random() > 0.5 ? 1 : -1, (trunkHeight * 0.4) + (i * 1.2), 0);
-        bMesh.rotation.z = Math.random() > 0.5 ? 0.3 : -0.3;
+        bMesh.position.set(Math.random() > 0.5 ? 1.2 : -1.2, (trunkHeight * 0.35) + (i * 1.4), 0);
+        bMesh.rotation.z = Math.random() > 0.5 ? 0.35 : -0.35;
         branchesGroup.add(bMesh);
     }
     treeGroup.add(branchesGroup);
@@ -172,10 +189,10 @@ function spawnTree(xPos, zPos) {
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
         const clusterCount = 3;
         for(let j=0; j<clusterCount; j++) {
-            const size = 3.5 - (j * 0.8);
-            const lGeo = new THREE.ConeGeometry(size, 4.0, 5);
+            const size = 4.0 - (j * 0.9);
+            const lGeo = new THREE.ConeGeometry(size, 4.5, 5);
             const lMesh = new THREE.Mesh(lGeo, leafMat);
-            lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+            lMesh.position.y = trunkHeight - 1 + (j * 2.2);
             leavesGroup.add(lMesh);
         }
     }
@@ -218,22 +235,16 @@ function spawnObstacle(zPos) {
     scene.add(obstacle);
     obstacles.push(obstacle);
 
-    // Spawns a structured lined-up collection streak down an alternate clear lane
     if (Math.random() > 0.2) {
         let coinLane = lanes[Math.floor(Math.random() * lanes.length)];
         while(coinLane === chosenLane) { 
             coinLane = lanes[Math.floor(Math.random() * lanes.length)];
         }
-        // Spawns 3 perfectly aligned serial lined-up coordinates
         spawnCoinSeries(coinLane, zPos + 10);
     }
 }
 
-/**
- * Creates straight, lined-up sequential runs of Medium-Sized Coins
- */
 function spawnCoinSeries(laneX, startZ) {
-    // Increased cylinder radius to 0.8 and depth to 0.25 for clean "Medium Size" visual prominence
     const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.25, 16); 
     coinGeo.rotateX(Math.PI / 2);
     
@@ -241,7 +252,6 @@ function spawnCoinSeries(laneX, startZ) {
         color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.6, metalness: 1.0, roughness: 0.1
     });
 
-    // Generate 3 sequential lined-up objects spaced cleanly down the line
     for (let i = 0; i < 3; i++) {
         const coinMesh = new THREE.Mesh(coinGeo, coinMat);
         coinMesh.position.set(laneX, 1.2, startZ - (i * 6));
@@ -355,10 +365,10 @@ function shiftingThemeStateMatrix(tierIndex) {
                 const trunkHeight = treeGroup.children[0].geometry.parameters.height;
                 const leafMat = new THREE.MeshStandardMaterial({ color: currentBlueprint.leafColor, emissive: 0x003311, roughness: 0.6 });
                 for(let j=0; j<3; j++) {
-                    const size = 3.5 - (j * 0.8);
-                    const lGeo = new THREE.ConeGeometry(size, 4.0, 5);
+                    const size = 4.0 - (j * 0.9);
+                    const lGeo = new THREE.ConeGeometry(size, 4.5, 5);
                     const lMesh = new THREE.Mesh(lGeo, leafMat);
-                    lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+                    lMesh.position.y = trunkHeight - 1 + (j * 2.2);
                     leavesGroup.add(lMesh);
                 }
             }
@@ -421,16 +431,27 @@ function update() {
         if (track.position.z > 40) track.position.z = -200;
     });
 
+    // Infinite Forest Recycler Loop Execution
     trees.forEach(treeGroup => {
         treeGroup.position.z += speed;
         if (treeGroup.position.z > 20) {
-            treeGroup.position.z = -220;
+            // Re-randomize the track lateral offset coordinates slightly to preserve procedural variation
+            const oldX = treeGroup.position.x;
+            const isLeft = oldX < 0;
+            let newX;
+            
+            if (isLeft) {
+                newX = -11 - Math.random() * 24; 
+            } else {
+                newX = 11 + Math.random() * 24;
+            }
+            
+            treeGroup.position.set(newX, 0, -220);
         }
     });
 
     coins.forEach((coin, index) => {
         coin.position.z += speed; coin.rotation.y += 0.05;
-        // Hitbox parameters adjusted cleanly to compensate for the medium size diameter increase
         if (player.position.distanceTo(coin.position) < 1.5) {
             scene.remove(coin); coins.splice(index, 1);
             coinsCount += 1; coinsUi.innerText = coinsCount;
