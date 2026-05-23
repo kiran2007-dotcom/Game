@@ -5,6 +5,7 @@ let player;
 let obstacles = [];
 let trackPieces = [];
 let coins = [];
+let trees = []; // Active environment tree tracking arrays
 
 // Game Tuning Configurations & Metrics
 let speed = 0.6;
@@ -76,6 +77,12 @@ function init() {
         createTrackSection(i * -40);
     }
 
+    // Generate initial environment side trees
+    for(let z = 0; z > -240; z -= 15) {
+        spawnTree(-11, z); // Left bank line
+        spawnTree(11, z);  // Right bank line
+    }
+
     setupMenuInteractions();
     
     window.addEventListener('resize', onWindowResize, false);
@@ -86,7 +93,6 @@ function init() {
  * Generates custom dynamic canvas textures to wrap "KM" around the walls
  */
 function generateBrandedTextures() {
-    // 1. Regular Mode Branded Material (Cyan Glow text)
     const canvasReg = document.createElement('canvas');
     canvasReg.width = 256; canvasReg.height = 256;
     const ctxReg = canvasReg.getContext('2d');
@@ -101,7 +107,6 @@ function generateBrandedTextures() {
         map: texReg, emissive: 0x00f3ff, emissiveIntensity: 0.3, roughness: 0.2
     });
 
-    // 2. Hell Mode Branded Material (Fiery Orange/Red text)
     const canvasHell = document.createElement('canvas');
     canvasHell.width = 256; canvasHell.height = 256;
     const ctxHell = canvasHell.getContext('2d');
@@ -140,6 +145,42 @@ function createTrackSection(zOffset) {
     trackPieces.push(group);
 }
 
+/**
+ * Generates modular tree architecture sets with detachable leaf objects
+ */
+function spawnTree(xPos, zPos) {
+    const treeGroup = new THREE.Group();
+    
+    // Create Trunk
+    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.4, 3.5, 5);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: isHellTheme ? 0x221111 : 0x5a3d28, roughness: 0.9 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 1.75;
+    treeGroup.add(trunk);
+
+    // Create custom angular branches array skeleton
+    const branchGeo = new THREE.BoxGeometry(1.2, 0.15, 0.15);
+    const b1 = new THREE.Mesh(branchGeo, trunkMat); b1.position.set(0.5, 2.2, 0); b1.rotation.z = 0.4; treeGroup.add(b1);
+    const b2 = new THREE.Mesh(branchGeo, trunkMat); b2.position.set(-0.5, 2.6, 0); b2.rotation.z = -0.4; treeGroup.add(b2);
+
+    // Create Leaves Stack (Only build if not currently in Hell Mode)
+    const leavesGroup = new THREE.Group();
+    leavesGroup.name = "foliage";
+    
+    if (!isHellTheme) {
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x004411, roughness: 0.6 });
+        const coneGeo1 = new THREE.ConeGeometry(1.4, 2.2, 5);
+        const l1 = new THREE.Mesh(coneGeo1, leafMat); l1.position.y = 3.5; leavesGroup.add(l1);
+        const coneGeo2 = new THREE.ConeGeometry(1.0, 1.6, 5);
+        const l2 = new THREE.Mesh(coneGeo2, leafMat); l2.position.y = 4.4; leavesGroup.add(l2);
+    }
+    treeGroup.add(leavesGroup);
+
+    treeGroup.position.set(xPos, 0, zPos);
+    scene.add(treeGroup);
+    trees.push(treeGroup);
+}
+
 function assembleSelectedDrone() {
     if (player) scene.remove(player);
     const spec = droneSpecs[activeDroneType];
@@ -165,7 +206,6 @@ function spawnObstacle(zPos) {
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
     const obsGeo = new THREE.BoxGeometry(4.5, 4, 2);
     
-    // Assigns the custom branded structural textures directly to the obstacle mesh
     const obstacle = new THREE.Mesh(obsGeo, isHellTheme ? hellObstacleMaterial : regularObstacleMaterial);
     obstacle.position.set(chosenLane, 2, zPos);
     
@@ -265,6 +305,28 @@ function startRun() {
         freshGrid.rotation.x = Math.PI / 2; freshGrid.position.set(0, 0.02, 0); roadMesh.add(freshGrid);
     });
 
+    // Reset environment side trees architecture states back to healthy greens
+    trees.forEach((treeGroup, index) => {
+        const sideSign = (index % 2 === 0) ? -11 : 11;
+        const targetZ = Math.floor(index / 2) * -15;
+        treeGroup.position.set(sideSign, 0, targetZ);
+        
+        // Restore trunk color configurations
+        treeGroup.children[0].material.color.setHex(0x5a3d28);
+        treeGroup.children[1].material.color.setHex(0x5a3d28);
+        treeGroup.children[2].material.color.setHex(0x5a3d28);
+
+        // Regenerate complete leaf elements matrices inside foliage layers
+        const leavesGroup = treeGroup.getObjectByName("foliage");
+        leavesGroup.clear(); // Clear old dead states out
+        
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x004411, roughness: 0.6 });
+        const coneGeo1 = new THREE.ConeGeometry(1.4, 2.2, 5);
+        const l1 = new THREE.Mesh(coneGeo1, leafMat); l1.position.y = 3.5; leavesGroup.add(l1);
+        const coneGeo2 = new THREE.ConeGeometry(1.0, 1.6, 5);
+        const l2 = new THREE.Mesh(coneGeo2, leafMat); l2.position.y = 4.4; leavesGroup.add(l2);
+    });
+
     obstacles.forEach(obs => scene.remove(obs)); coins.forEach(c => scene.remove(c));
     obstacles = []; coins = [];
 
@@ -284,11 +346,24 @@ function triggerHellOverdriveTransformation() {
     const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.setHex(0xff2200);
     const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.setHex(0x3a0000);
 
+    // 1. Re-skin running tracks layers to charcoal and lava
     trackPieces.forEach(track => {
         const roadMesh = track.children[0]; roadMesh.material.color.setHex(0x110505);
         const oldGrid = roadMesh.children[0]; roadMesh.remove(oldGrid);
         const lavaGrid = new THREE.GridHelper(40, 10, 0xff3300, 0x551100);
         lavaGrid.rotation.x = Math.PI / 2; lavaGrid.position.set(0, 0.02, 0); roadMesh.add(lavaGrid);
+    });
+
+    // 2. STRIP LEAVES DYNAMICALLY — Leave only deadwood branches
+    trees.forEach(treeGroup => {
+        // Darken trunk and skeleton branches elements to charred gray-black
+        treeGroup.children[0].material.color.setHex(0x221111); // Main trunk
+        treeGroup.children[1].material.color.setHex(0x221111); // Branch skeletal 1
+        treeGroup.children[2].material.color.setHex(0x221111); // Branch skeletal 2
+
+        // Flush all geometric leaf node modules inside the foliage layer out of memory
+        const leavesGroup = treeGroup.getObjectByName("foliage");
+        if (leavesGroup) leavesGroup.clear(); 
     });
 
     playAudioTone(90, "sawtooth", 0.6, 0.5);
@@ -317,6 +392,15 @@ function update() {
     trackPieces.forEach(track => {
         track.position.z += speed;
         if (track.position.z > 40) track.position.z = -200;
+    });
+
+    // Handle Infinite Side Tree Loop Mechanics
+    trees.forEach(treeGroup => {
+        treeGroup.position.z += speed;
+        // If a tree flows completely behind the camera frame viewpoint, recycle it forward over the horizon
+        if (treeGroup.position.z > 20) {
+            treeGroup.position.z = -220;
+        }
     });
 
     coins.forEach((coin, index) => {
