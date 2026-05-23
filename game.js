@@ -5,7 +5,7 @@ let player;
 let obstacles = [];
 let trackPieces = [];
 let coins = [];
-let trees = []; // Restored detailed tracking registry
+let trees = []; 
 
 // Game Tuning Configurations & Metrics
 let speed = 0.6;
@@ -15,12 +15,16 @@ let coinsCount = 0;
 let currentTier = 0; 
 const keys = {};
 
+// Mobile Touch Control Variables
+let touchStartX = 0;
+const minSwipeDistance = 30; // Minimum pixels to trigger a lane shift
+
 // Active Selected Drone Configuration Mapping
 let activeDroneType = "vanguard";
 const droneSpecs = {
-    vanguard: { color: 0xffaa00, emissive: 0xff5500, lateral: 0.30, size: 0.5 },
-    phantom: { color: 0xbd00ff, emissive: 0x7700aa, lateral: 0.38, size: 0.4 },
-    spectre: { color: 0x00f3ff, emissive: 0x0088cc, lateral: 0.24, size: 0.6 }
+    vanguard: { color: 0xffaa00, emissive: 0xff5500, lateral: 0.32, size: 0.5 },
+    phantom: { color: 0xbd00ff, emissive: 0x7700aa, lateral: 0.40, size: 0.4 },
+    spectre: { color: 0x00f3ff, emissive: 0x0088cc, lateral: 0.26, size: 0.6 }
 };
 
 // Procedural HTML5 Synthesizer Core Context Audio Drivers
@@ -41,7 +45,7 @@ const coinsUi = document.getElementById('coins-ui');
 // Pre-cached Branded Obstacle Material Tiers
 let obstacleMaterials = {};
 
-// Reusable math allocation shells to completely avoid garbage collection stuttering
+// Reusable math allocation shells to eliminate garbage collection stuttering
 const _playerBox = new THREE.Box3();
 const _obstacleBox = new THREE.Box3();
 
@@ -57,7 +61,7 @@ function init() {
     camera.position.set(0, 7, 14); 
 
     renderer = new THREE.WebGLRenderer({ 
-        antialias: false, // Performance booster for steady framerates
+        antialias: false, // Performance booster for steady mobile framerates
         powerPreference: "high-performance",
         precision: "mediump"
     });
@@ -77,7 +81,6 @@ function init() {
     ambientLight.name = "ambientlight";
     scene.add(ambientLight);
 
-    // Generate Branded Textures with the game name "RUN"
     generateBrandedTextures();
 
     // Instance structural track runways
@@ -85,8 +88,7 @@ function init() {
         createTrackSection(i * -40);
     }
 
-    // MULTI-LAYERED DEEP FOREST GENERATION (Restored Original Visual Layout)
-    // Optimized matrix positioning to avoid complex run-time object transformations
+    // MULTI-LAYERED DEEP FOREST GENERATION 
     for(let z = 0; z > -240; z -= 8) {
         spawnTree(-11 - Math.random() * 3, z);  
         spawnTree(-15 - Math.random() * 4, z + 3);  
@@ -100,10 +102,42 @@ function init() {
     }
 
     setupMenuInteractions();
+    setupMobileControls(); // Enable touch swiping architecture
     
+    // Auto-adjust resolution scaling factor depending on mobile hardware rules
     window.innerWidth < 768 ? renderer.setPixelRatio(1) : renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('keydown', handleGlobalKeydown);
+}
+
+function setupMobileControls() {
+    window.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+        if (gameState !== "PLAYING" || !player) return;
+        
+        const touchX = e.touches[0].clientX;
+        const diffX = touchX - touchStartX;
+
+        if (Math.abs(diffX) > minSwipeDistance) {
+            if (diffX > 0) {
+                keys['arrowright'] = true;
+                keys['arrowleft'] = false;
+            } else {
+                keys['arrowleft'] = true;
+                keys['arrowright'] = false;
+            }
+            // Re-anchor start point to handle continuous sliding smoothly
+            touchStartX = touchX; 
+        }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+        keys['arrowleft'] = false;
+        keys['arrowright'] = false;
+    }, { passive: true });
 }
 
 function generateBrandedTextures() {
@@ -154,16 +188,12 @@ function createTrackSection(zOffset) {
     trackPieces.push(group);
 }
 
-/**
- * Restored Detailed Structural Tree Generation Pipeline with Optimization Flags
- */
 function spawnTree(xPos, zPos) {
     const treeGroup = new THREE.Group();
-    
     const trunkHeight = 6.0 + Math.random() * 5.0;
     const trunkRadius = 0.45 + Math.random() * 0.35;
 
-    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 5); // Trimmed sides slightly for performance
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 5);
     
     let trunkColor = 0x422d1e;
     if (currentTier === 1) trunkColor = 0x1f1111;
@@ -194,7 +224,7 @@ function spawnTree(xPos, zPos) {
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
         for(let j=0; j<3; j++) {
             const size = 3.8 - (j * 0.9);
-            const lGeo = new THREE.ConeGeometry(size, 4.2, 4); // Low-poly profile structure preserves memory bandwidth
+            const lGeo = new THREE.ConeGeometry(size, 4.2, 4);
             const lMesh = new THREE.Mesh(lGeo, leafMat);
             lMesh.position.y = trunkHeight - 1 + (j * 2.0);
             leavesGroup.add(lMesh);
@@ -203,8 +233,6 @@ function spawnTree(xPos, zPos) {
     treeGroup.add(leavesGroup);
 
     treeGroup.position.set(xPos, 0, zPos);
-    
-    // Disable auto-matrix computation to bypass continuous CPU-to-GPU overhead spikes
     treeGroup.matrixAutoUpdate = false;
     treeGroup.updateMatrix();
 
@@ -232,44 +260,25 @@ function assembleSelectedDrone() {
     const underglow = new THREE.PointLight(spec.color, 2, 6); underglow.position.set(0, -0.5, 0); player.add(underglow);
 }
 
+/**
+ * Procedural Fixed Obstacle Factory Engine
+ */
 function spawnObstacle(zPos) {
     const lanes = [-5, 0, 5]; 
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
     const activeMat = obstacleMaterials['tier' + currentTier];
     
-    // Restricted obstacle roster: Left-Right MOVING obstacles have been removed
-    const types = ["STATIC", "SPINNING", "JUMPING"];
-    const selectedType = types[Math.floor(Math.random() * types.length)];
-    
-    let obstacleMesh;
-    
-    if (selectedType === "SPINNING") {
-        const obsGeo = new THREE.BoxGeometry(9.0, 1.2, 1.2);
-        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
-        obstacleMesh.position.set(0, 1.2, zPos); 
-    } else if (selectedType === "JUMPING") {
-        const obsGeo = new THREE.BoxGeometry(3.2, 3.2, 3.2);
-        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
-        obstacleMesh.position.set(chosenLane, 1.6, zPos);
-    } else {
-        const obsGeo = new THREE.BoxGeometry(4.2, 3.6, 2.0);
-        obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
-        obstacleMesh.position.set(chosenLane, 1.8, zPos);
-    }
+    // All obstacles are now static, structural place-bound layouts
+    const obsGeo = new THREE.BoxGeometry(4.2, 3.6, 2.0);
+    const obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
+    obstacleMesh.position.set(chosenLane, 1.8, zPos);
 
-    obstacleMesh.userData = {
-        type: selectedType,
-        baseX: obstacleMesh.position.x,
-        baseY: obstacleMesh.position.y,
-        timeOffset: Math.random() * Math.PI * 2
-    };
-    
     scene.add(obstacleMesh);
     obstacles.push(obstacleMesh);
 
     if (Math.random() > 0.2) {
         let coinLane = lanes[Math.floor(Math.random() * lanes.length)];
-        while(selectedType !== "SPINNING" && coinLane === chosenLane) { 
+        while(coinLane === chosenLane) { 
             coinLane = lanes[Math.floor(Math.random() * lanes.length)];
         }
         spawnCoinSeries(coinLane, zPos + 10);
@@ -405,7 +414,7 @@ function shiftingThemeStateMatrix(tierIndex) {
                 }
             }
         }
-        treeGroup.updateMatrix(); // Refresh local frame representation maps manually
+        treeGroup.updateMatrix(); 
     });
 
     playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
@@ -437,8 +446,8 @@ function update() {
     modulateEngineSound();
     if (gameState !== "PLAYING") return;
     const spec = droneSpecs[activeDroneType];
-    const elapsedTime = performance.now() * 0.001; 
 
+    // Handles hybrid input (Keyboard Keypresses + Touch Swipe Vectors)
     if ((keys['a'] || keys['arrowleft']) && player.position.x > -6.5) player.position.x -= spec.lateral;
     if ((keys['d'] || keys['arrowright']) && player.position.x < 6.5) player.position.x += spec.lateral;
 
@@ -465,7 +474,6 @@ function update() {
         if (track.position.z > 40) track.position.z = -200;
     });
 
-    // Highly Optimized Matrix-Recycler for detailed trees
     trees.forEach(treeGroup => {
         treeGroup.position.z += speed;
         if (treeGroup.position.z > 20) {
@@ -477,7 +485,6 @@ function update() {
         treeGroup.updateMatrix(); 
     });
 
-    // Optimized inline reverse collection sweep for active item configurations
     for (let index = coins.length - 1; index >= 0; index--) {
         const coin = coins[index];
         coin.position.z += speed; coin.rotation.y += 0.04;
@@ -496,17 +503,7 @@ function update() {
     for (let index = obstacles.length - 1; index >= 0; index--) {
         const obs = obstacles[index];
         obs.position.z += speed;
-        
-        const behavior = obs.userData.type;
-        const offset = obs.userData.timeOffset;
-        
-        if (behavior === "SPINNING") {
-            obs.rotation.y += 0.035;
-        } else if (behavior === "JUMPING") {
-            obs.position.y = obs.userData.baseY + Math.abs(Math.sin(elapsedTime * 4.5 + offset)) * 4.0;
-        }
 
-        // Bounding checks utilize static pre-allocated wrappers to eliminate dynamic frame-drops
         _obstacleBox.setFromObject(obs);
 
         if (_playerBox.intersectsBox(_obstacleBox)) {
@@ -530,7 +527,8 @@ function update() {
 function setupMenuInteractions() {
     const options = document.querySelectorAll('.drone-option');
     options.forEach(opt => {
-        opt.onclick = (e) => {
+        // Updated event triggers to 'pointerdown' to ensure instant mobile touchscreen feedback
+        opt.onpointerdown = (e) => {
             options.forEach(o => o.classList.remove('active'));
             e.currentTarget.classList.add('active');
             activeDroneType = e.currentTarget.getAttribute('data-drone');
@@ -539,10 +537,10 @@ function setupMenuInteractions() {
     });
     document.getElementById('sfx-vol').oninput = (e) => { sfxVolume = parseFloat(e.target.value); };
     document.getElementById('bgm-vol').oninput = (e) => { bgmVolume = parseFloat(e.target.value); };
-    document.getElementById('start-btn').onclick = startRun;
-    document.getElementById('restart-btn').onclick = startRun;
-    document.getElementById('pause-btn').onclick = togglePauseState;
-    document.getElementById('resume-btn').onclick = togglePauseState;
+    document.getElementById('start-btn').onpointerdown = startRun;
+    document.getElementById('restart-btn').onpointerdown = startRun;
+    document.getElementById('pause-btn').onpointerdown = togglePauseState;
+    document.getElementById('resume-btn').onpointerdown = togglePauseState;
 }
 
 function onWindowResize() {
