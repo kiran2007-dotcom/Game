@@ -17,7 +17,7 @@ const keys = {};
 
 // Mobile Touch Control Variables
 let touchStartX = 0;
-const minSwipeDistance = 30; // Minimum pixels to trigger a lane shift
+const minSwipeDistance = 30; 
 
 // Active Selected Drone Configuration Mapping
 let activeDroneType = "vanguard";
@@ -49,19 +49,39 @@ let obstacleMaterials = {};
 const _playerBox = new THREE.Box3();
 const _obstacleBox = new THREE.Box3();
 
+// --- LERP MATRIX THEME ENGINE STATES ---
+const themeTiers = [
+    { sky: new THREE.Color(0xa3e5ff), fogDen: 0.008, sun: new THREE.Color(0xffffff), amb: new THREE.Color(0x7cdaff), track: new THREE.Color(0x004411), rail: new THREE.Color(0xff0066), wood: new THREE.Color(0x5a3d28), gLine: 0x00ff66, gSub: 0x00aa44 }, 
+    { sky: new THREE.Color(0x1a0505), fogDen: 0.015, sun: new THREE.Color(0xff2200), amb: new THREE.Color(0x3a0000), track: new THREE.Color(0x110505), rail: new THREE.Color(0xaa0000), wood: new THREE.Color(0x1f1111), gLine: 0xff3300, gSub: 0x551100 }, 
+    { sky: new THREE.Color(0x0c0114), fogDen: 0.018, sun: new THREE.Color(0x9900ff), amb: new THREE.Color(0x110022), track: new THREE.Color(0x05010a), rail: new THREE.Color(0x6600cc), wood: new THREE.Color(0x3d0066), gLine: 0x00ffaa, gSub: 0x004422 }, 
+    { sky: new THREE.Color(0x000000), fogDen: 0.025, sun: new THREE.Color(0xffaa00), amb: new THREE.Color(0x0a0a0a), track: new THREE.Color(0x020202), rail: new THREE.Color(0xffaa00), wood: new THREE.Color(0xdddddd), gLine: 0xff0044, gSub: 0x330000 }  
+];
+
+// Active interpolation states for blending colors smoothly
+let currentVisuals = {
+    sky: new THREE.Color(0xa3e5ff),
+    fogDen: 0.008,
+    sun: new THREE.Color(0xffffff),
+    amb: new THREE.Color(0x7cdaff),
+    track: new THREE.Color(0x004411),
+    rail: new THREE.Color(0xff0066),
+    wood: new THREE.Color(0x5a3d28)
+};
+const lerpSpeed = 0.015; // Lower values make the color transition slower and smoother
+
 /**
  * Initializes the full WebGL pipeline and environmental configurations.
  */
 function init() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xa3e5ff); 
-    scene.fog = new THREE.FogExp2(0xa3e5ff, 0.008); 
+    scene.background = currentVisuals.sky.clone(); 
+    scene.fog = new THREE.FogExp2(currentVisuals.sky.getHex(), currentVisuals.fogDen); 
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 7, 14); 
 
     renderer = new THREE.WebGLRenderer({ 
-        antialias: false, // Performance booster for steady mobile framerates
+        antialias: false, 
         powerPreference: "high-performance",
         precision: "mediump"
     });
@@ -71,7 +91,6 @@ function init() {
     container.innerHTML = ""; 
     container.appendChild(renderer.domElement);
 
-    // Main Lighting Nodes Configuration
     const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
     sunLight.name = "sunlight";
     sunLight.position.set(5, 20, 10);
@@ -83,12 +102,10 @@ function init() {
 
     generateBrandedTextures();
 
-    // Instance structural track runways
     for(let i = 0; i < 6; i++) {
         createTrackSection(i * -40);
     }
 
-    // MULTI-LAYERED DEEP FOREST GENERATION 
     for(let z = 0; z > -240; z -= 8) {
         spawnTree(-11 - Math.random() * 3, z);  
         spawnTree(-15 - Math.random() * 4, z + 3);  
@@ -102,9 +119,8 @@ function init() {
     }
 
     setupMenuInteractions();
-    setupMobileControls(); // Enable touch swiping architecture
+    setupMobileControls(); 
     
-    // Auto-adjust resolution scaling factor depending on mobile hardware rules
     window.innerWidth < 768 ? renderer.setPixelRatio(1) : renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('keydown', handleGlobalKeydown);
@@ -129,7 +145,6 @@ function setupMobileControls() {
                 keys['arrowleft'] = true;
                 keys['arrowright'] = false;
             }
-            // Re-anchor start point to handle continuous sliding smoothly
             touchStartX = touchX; 
         }
     }, { passive: true });
@@ -168,7 +183,7 @@ function generateBrandedTextures() {
 function createTrackSection(zOffset) {
     const group = new THREE.Group();
     const roadGeo = new THREE.PlaneGeometry(18, 40);
-    const roadMat = new THREE.MeshStandardMaterial({ color: 0x004411, roughness: 0.5 });
+    const roadMat = new THREE.MeshStandardMaterial({ color: currentVisuals.track.getHex(), roughness: 0.5 });
     const road = new THREE.Mesh(roadGeo, roadMat);
     road.rotation.x = -Math.PI / 2;
     group.add(road);
@@ -178,7 +193,7 @@ function createTrackSection(zOffset) {
     road.add(grid);
 
     const railGeo = new THREE.BoxGeometry(0.5, 1.2, 40);
-    const railMat = new THREE.MeshStandardMaterial({ color: 0xff0066, emissive: 0xff0066, emissiveIntensity: 0.5 });
+    const railMat = new THREE.MeshStandardMaterial({ color: currentVisuals.rail.getHex(), emissive: currentVisuals.rail.getHex(), emissiveIntensity: 0.5 });
     
     const leftRail = new THREE.Mesh(railGeo, railMat); leftRail.position.set(-9, 0.6, 0); group.add(leftRail);
     const rightRail = new THREE.Mesh(railGeo, railMat); rightRail.position.set(9, 0.6, 0); group.add(rightRail);
@@ -194,13 +209,7 @@ function spawnTree(xPos, zPos) {
     const trunkRadius = 0.45 + Math.random() * 0.35;
 
     const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.5, trunkRadius, trunkHeight, 5);
-    
-    let trunkColor = 0x422d1e;
-    if (currentTier === 1) trunkColor = 0x1f1111;
-    if (currentTier === 2) trunkColor = 0x3d0066;
-    if (currentTier === 3) trunkColor = 0xdddddd;
-
-    const trunkMat = new THREE.MeshStandardMaterial({ color: trunkColor, roughness: 0.9 });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: currentVisuals.wood.getHex(), roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = trunkHeight / 2;
     treeGroup.add(trunk);
@@ -220,15 +229,13 @@ function spawnTree(xPos, zPos) {
     const leavesGroup = new THREE.Group();
     leavesGroup.name = "foliage";
     
-    if (currentTier === 0) {
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
-        for(let j=0; j<3; j++) {
-            const size = 3.8 - (j * 0.9);
-            const lGeo = new THREE.ConeGeometry(size, 4.2, 4);
-            const lMesh = new THREE.Mesh(lGeo, leafMat);
-            lMesh.position.y = trunkHeight - 1 + (j * 2.0);
-            leavesGroup.add(lMesh);
-        }
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
+    for(let j=0; j<3; j++) {
+        const size = 3.8 - (j * 0.9);
+        const lGeo = new THREE.ConeGeometry(size, 4.2, 4);
+        const lMesh = new THREE.Mesh(lGeo, leafMat);
+        lMesh.position.y = trunkHeight - 1 + (j * 2.0);
+        leavesGroup.add(lMesh);
     }
     treeGroup.add(leavesGroup);
 
@@ -260,15 +267,11 @@ function assembleSelectedDrone() {
     const underglow = new THREE.PointLight(spec.color, 2, 6); underglow.position.set(0, -0.5, 0); player.add(underglow);
 }
 
-/**
- * Procedural Fixed Obstacle Factory Engine
- */
 function spawnObstacle(zPos) {
     const lanes = [-5, 0, 5]; 
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
     const activeMat = obstacleMaterials['tier' + currentTier];
     
-    // All obstacles are now static, structural place-bound layouts
     const obsGeo = new THREE.BoxGeometry(4.2, 3.6, 2.0);
     const obstacleMesh = new THREE.Mesh(obsGeo, activeMat);
     obstacleMesh.position.set(chosenLane, 1.8, zPos);
@@ -360,64 +363,56 @@ function togglePauseState() {
     playAudioTone(300, "sine", 0.15, 0.2);
 }
 
+/**
+ * Updates Tier tracking indexes and sounds, leaving real visual updates to linear math in ticks
+ */
 function shiftingThemeStateMatrix(tierIndex) {
     currentTier = tierIndex;
+    playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
+}
+
+/**
+ * Per-Frame Asynchronous Theme Lerp Engine Loop
+ */
+function processVisualThemeInterpolation() {
+    const target = themeTiers[currentTier];
+
+    // Lerp individual runtime vector spectrum variables
+    currentVisuals.sky.lerp(target.sky, lerpSpeed);
+    currentVisuals.sun.lerp(target.sun, lerpSpeed);
+    currentVisuals.amb.lerp(target.amb, lerpSpeed);
+    currentVisuals.track.lerp(target.track, lerpSpeed);
+    currentVisuals.rail.lerp(target.rail, lerpSpeed);
+    currentVisuals.wood.lerp(target.wood, lerpSpeed);
+    currentVisuals.fogDen += (target.fogDen - currentVisuals.fogDen) * lerpSpeed;
+
+    // Apply interpolated states into active environment references
+    scene.background.copy(currentVisuals.sky);
+    scene.fog.color.copy(currentVisuals.sky);
+    scene.fog.density = currentVisuals.fogDen;
+
+    const sun = scene.getObjectByName("sunlight"); 
+    if(sun) sun.color.copy(currentVisuals.sun);
     
-    const tiers = [
-        { sky: 0xa3e5ff, fogDen: 0.008, sun: 0xffffff, amb: 0x7cdaff, track: 0x004411, gLine: 0x00ff66, gSub: 0x00aa44, rail: 0xff0066, wood: 0x5a3d28, leafColor: 0x00ff44 }, 
-        { sky: 0x1a0505, fogDen: 0.015, sun: 0xff2200, amb: 0x3a0000, track: 0x110505, gLine: 0xff3300, gSub: 0x551100, rail: 0xaa0000, wood: 0x1f1111 }, 
-        { sky: 0x0c0114, fogDen: 0.018, sun: 0x9900ff, amb: 0x110022, track: 0x05010a, gLine: 0x00ffaa, gSub: 0x004422, rail: 0x6600cc, wood: 0x3d0066 }, 
-        { sky: 0x000000, fogDen: 0.025, sun: 0xffaa00, amb: 0x0a0a0a, track: 0x020202, gLine: 0xff0044, gSub: 0x330000, rail: 0xffaa00, wood: 0xdddddd }  
-    ];
+    const ambient = scene.getObjectByName("ambientlight"); 
+    if(ambient) ambient.color.copy(currentVisuals.amb);
 
-    const currentBlueprint = tiers[tierIndex];
-
-    scene.background = new THREE.Color(currentBlueprint.sky);
-    scene.fog.color = new THREE.Color(currentBlueprint.sky);
-    scene.fog.density = currentBlueprint.fogDen;
-
-    const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.setHex(currentBlueprint.sun);
-    const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.setHex(currentBlueprint.amb);
-
+    // Apply color lerps across the running track buffers
     trackPieces.forEach(track => {
         const roadMesh = track.children[0];
-        roadMesh.material.color.setHex(currentBlueprint.track);
-        
-        const oldGrid = roadMesh.children[0]; roadMesh.remove(oldGrid);
-        const freshGrid = new THREE.GridHelper(40, 10, currentBlueprint.gLine, currentBlueprint.gSub);
-        freshGrid.rotation.x = Math.PI / 2; freshGrid.position.set(0, 0.02, 0);
-        roadMesh.add(freshGrid);
-
-        track.children[1].material.color.setHex(currentBlueprint.rail);
-        track.children[2].material.color.setHex(currentBlueprint.rail);
+        roadMesh.material.color.copy(currentVisuals.track);
+        track.children[1].material.color.copy(currentVisuals.rail);
+        track.children[2].material.color.copy(currentVisuals.rail);
     });
 
+    // Handle smooth bark color changes on structural scenery trees
     trees.forEach(treeGroup => {
-        treeGroup.children[0].material.color.setHex(currentBlueprint.wood);
+        treeGroup.children[0].material.color.copy(currentVisuals.wood);
         const branchGroup = treeGroup.getObjectByName("branches");
         if(branchGroup) {
-            branchGroup.children.forEach(b => b.material.color.setHex(currentBlueprint.wood));
+            branchGroup.children.forEach(b => b.material.color.copy(currentVisuals.wood));
         }
-
-        const leavesGroup = treeGroup.getObjectByName("foliage");
-        if (leavesGroup) {
-            leavesGroup.clear(); 
-            if (tierIndex === 0) {
-                const trunkHeight = treeGroup.children[0].geometry.parameters.height;
-                const leafMat = new THREE.MeshStandardMaterial({ color: currentBlueprint.leafColor, emissive: 0x003311, roughness: 0.6 });
-                for(let j=0; j<3; j++) {
-                    const size = 3.8 - (j * 0.9);
-                    const lGeo = new THREE.ConeGeometry(size, 4.2, 4);
-                    const lMesh = new THREE.Mesh(lGeo, leafMat);
-                    lMesh.position.y = trunkHeight - 1 + (j * 2.0);
-                    leavesGroup.add(lMesh);
-                }
-            }
-        }
-        treeGroup.updateMatrix(); 
     });
-
-    playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
 }
 
 function startRun() {
@@ -427,7 +422,16 @@ function startRun() {
     speed = 0.6; distance = 0; coinsCount = 0; 
     coinsUi.innerText = "0";
     
-    shiftingThemeStateMatrix(0);
+    // Hard-reset the base visuals immediately on new run setup
+    currentTier = 0;
+    const initial = themeTiers[0];
+    currentVisuals.sky.copy(initial.sky);
+    currentVisuals.sun.copy(initial.sun);
+    currentVisuals.amb.copy(initial.amb);
+    currentVisuals.track.copy(initial.track);
+    currentVisuals.rail.copy(initial.rail);
+    currentVisuals.wood.copy(initial.wood);
+    currentVisuals.fogDen = initial.fogDen;
 
     obstacles.forEach(obs => scene.remove(obs)); coins.forEach(c => scene.remove(c));
     obstacles = []; coins = [];
@@ -447,7 +451,9 @@ function update() {
     if (gameState !== "PLAYING") return;
     const spec = droneSpecs[activeDroneType];
 
-    // Handles hybrid input (Keyboard Keypresses + Touch Swipe Vectors)
+    // Constantly calculate real-time smooth color adjustments
+    processVisualThemeInterpolation();
+
     if ((keys['a'] || keys['arrowleft']) && player.position.x > -6.5) player.position.x -= spec.lateral;
     if ((keys['d'] || keys['arrowright']) && player.position.x < 6.5) player.position.x += spec.lateral;
 
@@ -461,6 +467,7 @@ function update() {
     const computedVelocityKMH = Math.floor(speed * 180);
     speedUi.innerText = computedVelocityKMH; distanceUi.innerText = distance;
 
+    // Smooth state tier transitions checked continuously
     if (computedVelocityKMH >= 300 && currentTier < 3) {
         shiftingThemeStateMatrix(3);
     } else if (computedVelocityKMH >= 250 && computedVelocityKMH < 300 && currentTier < 2) {
@@ -498,7 +505,6 @@ function update() {
         if (coin.position.z > 20) { scene.remove(coin); coins.splice(index, 1); }
     }
 
-    // High Performance Active Hazards Updates 
     _playerBox.setFromObject(player);
     for (let index = obstacles.length - 1; index >= 0; index--) {
         const obs = obstacles[index];
@@ -527,7 +533,6 @@ function update() {
 function setupMenuInteractions() {
     const options = document.querySelectorAll('.drone-option');
     options.forEach(opt => {
-        // Updated event triggers to 'pointerdown' to ensure instant mobile touchscreen feedback
         opt.onpointerdown = (e) => {
             options.forEach(o => o.classList.remove('active'));
             e.currentTarget.classList.add('active');
