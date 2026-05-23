@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLICK-RUN // Cyberpunk Drone Core</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Include Three.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="ui-layer">
+        <div id="hud">
+            <div>VELOCITY: <span id="speed-ui">0</span> KM/H</div>
+            <div id="logo">SLICK-RUN</div>
+            <div>DISTANCE: <span id="distance-ui">0</span>M</div>
+        </div>
+        <div id="start-screen" class="overlay">
+            <h1>SLICK-RUN</h1>
+            <p>DATA REPLICATOR INTERCEPT PROTOCOL</p>
+            <p class="controls">Use <b>A / D</b> or <b>LEFT / RIGHT ARROWS</b> to dodge walls</p>
+            <button id="start-btn">INITIALIZE RUN</button>
+        </div>
+        <div id="game-over-screen" class="overlay hidden">
+            <h1 class="glitch">CONNECTION LOST</h1>
+            <p>Drone destroyed by corporate security.</p>
+            <button id="restart-btn">REBOOT SYSTEM</button>
+        </div>
+    </div>
+    <div id="3d-container"></div>
+    <script src="game.js"></script>
+</body>
+</html>

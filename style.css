@@ -1,0 +1,87 @@
+:root {
+    --neon-cyan: #00f3ff;
+    --neon-magenta: #ff0055;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #020205;
+    font-family: 'Courier New', Courier, monospace;
+    color: #fff;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#hud {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 40px;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--neon-cyan);
+}
+
+#logo {
+    font-size: 24px;
+    color: var(--neon-magenta);
+    text-shadow: 0 0 10px var(--neon-magenta);
+}
+
+.overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(2, 2, 5, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+.hidden { display: none !important; }
+
+h1 {
+    font-size: 56px;
+    letter-spacing: 8px;
+    margin-bottom: 10px;
+    color: #fff;
+    text-shadow: 0 0 20px var(--neon-cyan);
+}
+
+.glitch {
+    color: var(--neon-magenta);
+    text-shadow: 0 0 20px var(--neon-magenta);
+}
+
+p { color: #888; margin-bottom: 30px; }
+.controls { color: #555; font-size: 14px; }
+
+button {
+    background: transparent;
+    color: var(--neon-cyan);
+    border: 2px solid var(--neon-cyan);
+    padding: 15px 40px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 30px var(--neon-cyan);
+}
