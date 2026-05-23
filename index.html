@@ -3,30 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SLICK-RUN // Cyberpunk Drone Core</title>
+    <title>SLICK-RUN // Next-Gen Flying Core</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Include Three.js via CDN -->
+    <!-- Three.js Visual Viewport Injection Library Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
     <div id="ui-layer">
+        <!-- Live Real-Time Telemetry Readouts -->
         <div id="hud">
             <div>VELOCITY: <span id="speed-ui">0</span> KM/H</div>
             <div id="logo">SLICK-RUN</div>
             <div>DISTANCE: <span id="distance-ui">0</span>M</div>
         </div>
+
+        <!-- Start Portal Dashboard -->
         <div id="start-screen" class="overlay">
             <h1>SLICK-RUN</h1>
             <p>DATA REPLICATOR INTERCEPT PROTOCOL</p>
             <p class="controls">Use <b>A / D</b> or <b>LEFT / RIGHT ARROWS</b> to dodge walls</p>
             <button id="start-btn">INITIALIZE RUN</button>
         </div>
+
+        <!-- Terminal Termination Feedback -->
         <div id="game-over-screen" class="overlay hidden">
             <h1 class="glitch">CONNECTION LOST</h1>
-            <p>Drone destroyed by corporate security.</p>
+            <p>Drone destroyed by security mainframe grid matrix.</p>
             <button id="restart-btn">REBOOT SYSTEM</button>
         </div>
     </div>
+
+    <!-- Target mounting node container for WebGL Canvas viewports -->
     <div id="3d-container"></div>
     <script src="game.js"></script>
 </body>
