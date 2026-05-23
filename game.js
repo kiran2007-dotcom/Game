@@ -69,7 +69,7 @@ function init() {
     ambientLight.name = "ambientlight";
     scene.add(ambientLight);
 
-    // Generate Branded Textures for each tier phase
+    // Generate Branded Textures with the game name "RUN"
     generateBrandedTextures();
 
     // Instance structural track runways
@@ -78,12 +78,9 @@ function init() {
     }
 
     // Generate massive initial forest layer on both banks
-    // Lower spacing intervals creates a denser, heavier tree line effect
     for(let z = 0; z > -240; z -= 10) {
-        // Left side dense layers
         spawnTree(-12 - Math.random() * 3, z);
         spawnTree(-16 - Math.random() * 4, z);
-        // Right side dense layers
         spawnTree(12 + Math.random() * 3, z);
         spawnTree(16 + Math.random() * 4, z);
     }
@@ -95,7 +92,7 @@ function init() {
 }
 
 /**
- * Generates custom canvas textures for each dynamic stage variation
+ * Generates custom canvas textures dynamically stamping "RUN" for each phase
  */
 function generateBrandedTextures() {
     const configurations = [
@@ -111,9 +108,9 @@ function generateBrandedTextures() {
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = cfg.bg; ctx.fillRect(0, 0, 256, 256);
         ctx.strokeStyle = cfg.text; ctx.lineWidth = 10; ctx.strokeRect(5, 5, 246, 246);
-        ctx.fillStyle = cfg.text; ctx.font = 'bold 110px monospace';
+        ctx.fillStyle = cfg.text; ctx.font = 'bold 95px monospace'; // Adjusted for 3-letter layout
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('KM', 128, 128);
+        ctx.fillText('RUN', 128, 128); // Stamped RUN on blocks
         
         const texture = new THREE.CanvasTexture(canvas);
         obstacleMaterials[cfg.id] = new THREE.MeshStandardMaterial({
@@ -145,24 +142,17 @@ function createTrackSection(zOffset) {
     trackPieces.push(group);
 }
 
-/**
- * Spawns massive trees that outline the flight track corridors
- */
 function spawnTree(xPos, zPos) {
     const treeGroup = new THREE.Group();
-    
-    // Scale vectors up drastically to simulate an intense forest environment
     const trunkHeight = 6.0 + Math.random() * 4.0;
     const trunkRadius = 0.4 + Math.random() * 0.3;
 
-    // Create Trunk Mesh
     const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.6, trunkRadius, trunkHeight, 6);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x422d1e, roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = trunkHeight / 2;
     treeGroup.add(trunk);
 
-    // Create structural branch geometry arms extending out
     const branchesGroup = new THREE.Group();
     branchesGroup.name = "branches";
     const branchCount = 3 + Math.floor(Math.random() * 3);
@@ -175,11 +165,9 @@ function spawnTree(xPos, zPos) {
     }
     treeGroup.add(branchesGroup);
 
-    // Create Leaves Group Container Node
     const leavesGroup = new THREE.Group();
     leavesGroup.name = "foliage";
     
-    // Fill out structural leaf clusters if initialized during phase 0
     if (currentTier === 0) {
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff44, emissive: 0x003311, roughness: 0.6 });
         const clusterCount = 3;
@@ -223,7 +211,6 @@ function spawnObstacle(zPos) {
     const chosenLane = lanes[Math.floor(Math.random() * lanes.length)];
     const obsGeo = new THREE.BoxGeometry(4.5, 4, 2);
     
-    // Select material from pre-compiled tier atlas array map
     const activeMat = obstacleMaterials['tier' + currentTier];
     const obstacle = new THREE.Mesh(obsGeo, activeMat);
     obstacle.position.set(chosenLane, 2, zPos);
@@ -231,19 +218,36 @@ function spawnObstacle(zPos) {
     scene.add(obstacle);
     obstacles.push(obstacle);
 
-    if (Math.random() > 0.3) {
-        const coinLane = lanes[Math.floor(Math.random() * lanes.length)];
-        spawnCoin(coinLane, zPos + (Math.random() * 15 + 10));
+    // Spawns a structured lined-up collection streak down an alternate clear lane
+    if (Math.random() > 0.2) {
+        let coinLane = lanes[Math.floor(Math.random() * lanes.length)];
+        while(coinLane === chosenLane) { 
+            coinLane = lanes[Math.floor(Math.random() * lanes.length)];
+        }
+        // Spawns 3 perfectly aligned serial lined-up coordinates
+        spawnCoinSeries(coinLane, zPos + 10);
     }
 }
 
-function spawnCoin(xPos, zPos) {
-    const coinGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.15, 16); coinGeo.rotateX(Math.PI / 2);
+/**
+ * Creates straight, lined-up sequential runs of Medium-Sized Coins
+ */
+function spawnCoinSeries(laneX, startZ) {
+    // Increased cylinder radius to 0.8 and depth to 0.25 for clean "Medium Size" visual prominence
+    const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.25, 16); 
+    coinGeo.rotateX(Math.PI / 2);
+    
     const coinMat = new THREE.MeshStandardMaterial({ 
         color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.6, metalness: 1.0, roughness: 0.1
     });
-    const coinMesh = new THREE.Mesh(coinGeo, coinMat); coinMesh.position.set(xPos, 1.2, zPos);
-    scene.add(coinMesh); coins.push(coinMesh);
+
+    // Generate 3 sequential lined-up objects spaced cleanly down the line
+    for (let i = 0; i < 3; i++) {
+        const coinMesh = new THREE.Mesh(coinGeo, coinMat);
+        coinMesh.position.set(laneX, 1.2, startZ - (i * 6));
+        scene.add(coinMesh);
+        coins.push(coinMesh);
+    }
 }
 
 function playAudioTone(freq, type, duration, volume) {
@@ -273,7 +277,7 @@ function startProceduralEngineAudio() {
 
     ambientSynthInterval = setInterval(() => {
         if(gameState === "PLAYING") {
-            const roots = [110, 73, 55, 41]; // Shifts bass profile based on tier depth
+            const roots = [110, 73, 55, 41]; 
             const activeRoot = roots[currentTier] || 110;
             const notes = [activeRoot, activeRoot * 1.2, activeRoot * 1.5, activeRoot * 1.8];
             const waveTypes = ["triangle", "sawtooth", "sawtooth", "square"];
@@ -305,23 +309,18 @@ function togglePauseState() {
     playAudioTone(300, "sine", 0.15, 0.2);
 }
 
-/**
- * Handles full progressive theme matrix adjustments seamlessly across world elements
- */
 function shiftingThemeStateMatrix(tierIndex) {
     currentTier = tierIndex;
     
-    // Theme Blueprint Data Profiles Definition Matrix
     const tiers = [
-        { sky: 0xa3e5ff, fogDen: 0.008, sun: 0xffffff, amb: 0x7cdaff, track: 0x004411, gLine: 0x00ff66, gSub: 0x00aa44, rail: 0xff0066, wood: 0x5a3d28, leafColor: 0x00ff44 }, // Tier 0 (Alpine)
-        { sky: 0x1a0505, fogDen: 0.015, sun: 0xff2200, amb: 0x3a0000, track: 0x110505, gLine: 0xff3300, gSub: 0x551100, rail: 0xaa0000, wood: 0x1f1111 }, // Tier 1 (Volcanic Ash)
-        { sky: 0x0c0114, fogDen: 0.018, sun: 0x9900ff, amb: 0x110022, track: 0x05010a, gLine: 0x00ffaa, gSub: 0x004422, rail: 0x6600cc, wood: 0x3d0066 }, // Tier 2 (Radioactive Acid)
-        { sky: 0x000000, fogDen: 0.025, sun: 0xffaa00, amb: 0x0a0a0a, track: 0x020202, gLine: 0xff0044, gSub: 0x330000, rail: 0xffaa00, wood: 0xdddddd }  // Tier 3 (Abyssal Void)
+        { sky: 0xa3e5ff, fogDen: 0.008, sun: 0xffffff, amb: 0x7cdaff, track: 0x004411, gLine: 0x00ff66, gSub: 0x00aa44, rail: 0xff0066, wood: 0x5a3d28, leafColor: 0x00ff44 }, 
+        { sky: 0x1a0505, fogDen: 0.015, sun: 0xff2200, amb: 0x3a0000, track: 0x110505, gLine: 0xff3300, gSub: 0x551100, rail: 0xaa0000, wood: 0x1f1111 }, 
+        { sky: 0x0c0114, fogDen: 0.018, sun: 0x9900ff, amb: 0x110022, track: 0x05010a, gLine: 0x00ffaa, gSub: 0x004422, rail: 0x6600cc, wood: 0x3d0066 }, 
+        { sky: 0x000000, fogDen: 0.025, sun: 0xffaa00, amb: 0x0a0a0a, track: 0x020202, gLine: 0xff0044, gSub: 0x330000, rail: 0xffaa00, wood: 0xdddddd }  
     ];
 
     const currentBlueprint = tiers[tierIndex];
 
-    // Apply main horizon global fog and canvas color profiles
     scene.background = new THREE.Color(currentBlueprint.sky);
     scene.fog.color = new THREE.Color(currentBlueprint.sky);
     scene.fog.density = currentBlueprint.fogDen;
@@ -329,7 +328,6 @@ function shiftingThemeStateMatrix(tierIndex) {
     const sun = scene.getObjectByName("sunlight"); if(sun) sun.color.setHex(currentBlueprint.sun);
     const ambient = scene.getObjectByName("ambientlight"); if(ambient) ambient.color.setHex(currentBlueprint.amb);
 
-    // Re-skin track components with fresh grid parameters maps
     trackPieces.forEach(track => {
         const roadMesh = track.children[0];
         roadMesh.material.color.setHex(currentBlueprint.track);
@@ -339,28 +337,20 @@ function shiftingThemeStateMatrix(tierIndex) {
         freshGrid.rotation.x = Math.PI / 2; freshGrid.position.set(0, 0.02, 0);
         roadMesh.add(freshGrid);
 
-        // Track side fences
         track.children[1].material.color.setHex(currentBlueprint.rail);
         track.children[2].material.color.setHex(currentBlueprint.rail);
     });
 
-    // Re-morph and re-skin complete active forest layers
     trees.forEach(treeGroup => {
-        // Adjust main trunk color matrices elements
         treeGroup.children[0].material.color.setHex(currentBlueprint.wood);
-        
-        // Adjust branch system structures colors
         const branchGroup = treeGroup.getObjectByName("branches");
         if(branchGroup) {
             branchGroup.children.forEach(b => b.material.color.setHex(currentBlueprint.wood));
         }
 
-        // Adjust foliage conditions
         const leavesGroup = treeGroup.getObjectByName("foliage");
         if (leavesGroup) {
-            leavesGroup.clear(); // Clear old layout meshes context
-            
-            // Tier 0 is the only phase containing foliage cluster objects
+            leavesGroup.clear(); 
             if (tierIndex === 0) {
                 const trunkHeight = treeGroup.children[0].geometry.parameters.height;
                 const leafMat = new THREE.MeshStandardMaterial({ color: currentBlueprint.leafColor, emissive: 0x003311, roughness: 0.6 });
@@ -375,7 +365,6 @@ function shiftingThemeStateMatrix(tierIndex) {
         }
     });
 
-    // Fire sound structural threshold feedback alert signals
     playAudioTone(100 + (tierIndex * 80), "sawtooth", 0.6, 0.5);
 }
 
@@ -386,7 +375,6 @@ function startRun() {
     speed = 0.6; distance = 0; coinsCount = 0; 
     coinsUi.innerText = "0";
     
-    // Fire structural transformation matrix back to base configurations
     shiftingThemeStateMatrix(0);
 
     obstacles.forEach(obs => scene.remove(obs)); coins.forEach(c => scene.remove(c));
@@ -420,7 +408,6 @@ function update() {
     const computedVelocityKMH = Math.floor(speed * 180);
     speedUi.innerText = computedVelocityKMH; distanceUi.innerText = distance;
 
-    // Evaluates dynamic metrics down real-time threshold check rulesets
     if (computedVelocityKMH >= 300 && currentTier < 3) {
         shiftingThemeStateMatrix(3);
     } else if (computedVelocityKMH >= 250 && computedVelocityKMH < 300 && currentTier < 2) {
@@ -434,7 +421,6 @@ function update() {
         if (track.position.z > 40) track.position.z = -200;
     });
 
-    // Handle Infinite Side Tree Loop Mechanics
     trees.forEach(treeGroup => {
         treeGroup.position.z += speed;
         if (treeGroup.position.z > 20) {
@@ -444,7 +430,8 @@ function update() {
 
     coins.forEach((coin, index) => {
         coin.position.z += speed; coin.rotation.y += 0.05;
-        if (player.position.distanceTo(coin.position) < 1.2) {
+        // Hitbox parameters adjusted cleanly to compensate for the medium size diameter increase
+        if (player.position.distanceTo(coin.position) < 1.5) {
             scene.remove(coin); coins.splice(index, 1);
             coinsCount += 1; coinsUi.innerText = coinsCount;
             playAudioTone(880, "sine", 0.1, 0.3);
