@@ -1,6 +1,7 @@
 # Speed up 🚀
 
 This game is just for time pass and can be used to improve reaction speed on going the time inside the game!
+It's my first game ever made, check out my code and give me a star.
 ### ✨ Key Features
 - 🧠 **Smart Logic:** Custom calibration parameters to prevent inverted movement path loops.
 - ⚙️ **Hardware Response:** Fine-tuned timing flags for ultra-fast sensor polling rates.
