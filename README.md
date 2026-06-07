@@ -12,11 +12,11 @@ Get this workspace running locally on your system in under two minutes:
 
 ```bash
 # 1. Clone the workspace
-git clone [https://github.com/kiran2007-dotcom/your-repo-name.git](https://github.com/kiran2007-dotcom/your-repo-name.git)
+git clone https://github.com/kiran2007-dotcom/speed-up.git
 
 # 2. Navigate to the project directory
-cd your-repo-name
+cd speed-up
 
 # 3. Run the compilation or setup execution
-# (Change this line to match your running environment, e.g., gcc main.c or python script.py)
-gcc main.c -o output && ./output
+# (Change main.c if your primary game code file has a different name)
+gcc main.c -o speedup && ./speedup
